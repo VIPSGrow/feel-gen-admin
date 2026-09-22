@@ -662,6 +662,7 @@ export default function SignUpStepForm() {
                                     placeholder='Enter Password'
                                     defaultValue={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                    type={'password'}
                                 />
                             </div>
                             <div>

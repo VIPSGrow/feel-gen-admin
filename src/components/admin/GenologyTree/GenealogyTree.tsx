@@ -1,105 +1,184 @@
-"use client";
+import React, { useState } from 'react';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
+import '@/components/admin/GenologyTree/GenealogyTree.css';
+import { EyeIcon } from '@/icons';
 
-import React, { useState } from "react";
-import { ChevronDown, ChevronRight, Eye, Users } from "lucide-react";
-import Badge from "@/components/ui/badge/Badge";
-import type { TreeUser } from "@/types/network-tree";
-
-interface GenealogyTreeProps {
-  data: TreeUser[];
-  onSelect: (member: TreeUser) => void;
+interface Member {
+  id: number;
+  username: string;
+  email: string;
+  phone: string;
+  node_path: string;
+  referrer_id: number;
+  referral_code: string;
+  created_at: string;
+  is_active: boolean;
+  kyc_status: boolean;
+  children: Member[];
 }
 
-const formatCurrency = (value: unknown) => {
-  const amount = Number(value || 0);
-  return `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-};
+interface TreeNodeProps {
+  member: Member;
+  onSelect: (member: Member) => void;
+}
 
-const MemberRow = ({
-  member,
-  generation,
-  onSelect,
-}: {
-  member: TreeUser;
-  generation: number;
-  onSelect: (member: TreeUser) => void;
-}) => {
-  const [expanded, setExpanded] = useState(true);
-  const children = member.children || [];
-  const hasChildren = children.length > 0 && generation < 7;
-  const packageStatus = member.package_status || member.order_status || "Not available";
-  const commission = member.commission_earned ?? member.total_commission ?? 0;
+const TreeNode: React.FC<TreeNodeProps> = ({ member, onSelect }) => {
+  const [isOpen, setIsOpen] = useState(true);
+
+  const toggleOpen = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsOpen(!isOpen);
+  };
+
+  const hasChildren = member.children && member.children.length > 0;
 
   return (
-    <div className="border-l border-gray-200 pl-3 dark:border-gray-700">
-      <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.03] sm:flex-row sm:items-center">
-        <button
-          type="button"
-          onClick={() => hasChildren && setExpanded((value) => !value)}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 disabled:cursor-default dark:hover:bg-gray-800"
-          disabled={!hasChildren}
-          aria-label={hasChildren ? (expanded ? "Collapse referrals" : "Expand referrals") : "No direct referrals"}
+    <li className="bg-warning">
+      <a href="#" onClick={(e) => e.preventDefault()}>
+        <div
+          className={`member-view-box ${member.kyc_status
+            ? member.is_active
+              ? 'bg-gray-200 dark:bg-gray-500'
+              : 'bg-warning-300 dark:bg-warning-300'
+            : 'bg-error-300 dark:bg-error-300'
+            }`}
+          onClick={toggleOpen}
         >
-          {hasChildren ? (expanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />) : <Users className="size-4" />}
-        </button>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="truncate font-semibold text-gray-900 dark:text-white">{member.full_name || member.username}</span>
-            <Badge color={member.is_active ? "success" : "warning"}>{member.is_active ? "Active" : "Inactive"}</Badge>
-            <Badge color="primary">Generation {generation}</Badge>
+          <div className="member-header">
+            <span>{member.phone}</span>
           </div>
-          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-            <span>Referral: {member.referral_code || "-"}</span>
-            <span>Package: {packageStatus}</span>
-            <span>Commission: {formatCurrency(commission)}</span>
+          <div className="member-image" onClick={toggleOpen}>
+            <img
+              src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png"
+              alt={member.username}
+            />
+          </div>
+          <div className="member-footer">
+            <div className="name">
+              <span>{member.username}</span>
+            </div>
+            <div className="downline">
+              <span>{member.referral_code}</span>
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect(member);
+                }}
+                className="cursor-pointer"
+              >
+                <EyeIcon className="mx-auto" />
+              </span>
+            </div>
           </div>
         </div>
+      </a>
 
-        <button
-          type="button"
-          onClick={() => onSelect(member)}
-          className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-200 px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-          title="View member details"
-        >
-          <Eye className="size-4" />
-          <span className="sm:hidden">Details</span>
-        </button>
-      </div>
-
-      {expanded && hasChildren && (
-        <div className="mt-3 space-y-3">
-          {children.map((child) => (
-            <MemberRow key={child.id} member={child} generation={generation + 1} onSelect={onSelect} />
+      {hasChildren && isOpen && (
+        <ul className="active">
+          {member.children.map((child) => (
+            <TreeNode key={child.id} member={child} onSelect={onSelect} />
           ))}
-        </div>
+        </ul>
       )}
-    </div>
+    </li>
   );
 };
 
-const GenealogyTree = ({ data, onSelect }: GenealogyTreeProps) => (
-  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/40 sm:p-6">
-    <div className="mb-5 flex items-center justify-between gap-3">
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Referral Genealogy</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Sponsor-based referrals through Generation 7</p>
-      </div>
-      <Badge color="primary">{data.length} direct referrals</Badge>
-    </div>
+const GenealogyTree: React.FC<{
+  data: Member[];
+  onSelect: (member: Member) => void;
+}> = ({ data, onSelect }) => {
+  return (
+    <div className="relative w-full h-[65vh] min-h-[500px] overflow-hidden rounded-[10px] shadow-md bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 select-none">
+      <TransformWrapper
+        initialScale={1}
+        minScale={0.1}
+        maxScale={2.5}
+        centerOnInit={true}
+        limitToBounds={false}
+        smooth={true}
+        wheel={{
+          disabled: false,
+          step: 0.003, // Small value to prevent sudden huge zoom steps
+          smoothStep: 0.001,
+        }}
+        pinch={{ disabled: false }}
+        doubleClick={{ disabled: true }}
+        panning={{
+          disabled: false,
+          velocityDisabled: true, // Prevents unwanted kinetic inertia on pan
+        }}
+      >
+        {({ zoomIn, zoomOut, resetTransform }) => (
+          <>
+            {/* Floating Zoom Controls */}
+            <div className="absolute top-4 right-4 z-30 flex items-center gap-1 bg-white/90 dark:bg-gray-900/90 backdrop-blur p-1.5 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={() => zoomIn(0.15)}
+                className="w-8 h-8 flex items-center justify-center font-bold text-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-200 transition-colors"
+                title="Zoom In"
+              >
+                +
+              </button>
+              <button
+                type="button"
+                onClick={() => zoomOut(0.15)}
+                className="w-8 h-8 flex items-center justify-center font-bold text-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-200 transition-colors"
+                title="Zoom Out"
+              >
+                -
+              </button>
+              <button
+                type="button"
+                onClick={() => resetTransform()}
+                className="px-3 h-8 text-xs font-semibold bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-200 transition-colors"
+                title="Reset View"
+              >
+                Reset
+              </button>
+            </div>
 
-    {data.length > 0 ? (
-      <div className="space-y-3">
-        {data.map((member) => (
-          <MemberRow key={member.id} member={member} generation={1} onSelect={onSelect} />
-        ))}
-      </div>
-    ) : (
-      <div className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-12 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-white/[0.02] dark:text-gray-400">
-        No referrals found.
-      </div>
-    )}
-  </div>
-);
+            {/* Canvas Area */}
+            <TransformComponent
+              wrapperStyle={{
+                width: '100%',
+                height: '100%',
+                overflow: 'hidden',
+              }}
+              contentStyle={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'flex-start',
+                minWidth: '100%',
+                minHeight: '100%',
+                padding: '40px',
+              }}
+            >
+              <div className="genealogy-body cursor-grab active:cursor-grabbing">
+                <div className="genealogy-tree">
+                  <ul>
+                    {data && data.length > 0 ? (
+                      data.map((rootMember) => (
+                        <TreeNode
+                          key={rootMember.id}
+                          member={rootMember}
+                          onSelect={onSelect}
+                        />
+                      ))
+                    ) : (
+                      <li className="text-gray-500 text-sm">No tree data available.</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </TransformComponent>
+          </>
+        )}
+      </TransformWrapper>
+    </div>
+  );
+};
 
 export default GenealogyTree;

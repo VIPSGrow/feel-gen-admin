@@ -239,7 +239,7 @@ export default function AddTransactionModal({
                             value={amount}
                             onChange={handleAmountChange}
                         />
-                        <Badge className='hint-text'>Wallet credits and debits automatically convert to UV.</Badge>
+                        {/* <Badge className='hint-text'>Wallet credits and debits automatically convert to UV.</Badge> */}
                     </div>
 
                     {/* Category Selector Block */}

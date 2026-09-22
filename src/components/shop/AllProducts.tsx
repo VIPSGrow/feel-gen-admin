@@ -236,9 +236,9 @@ const AllProducts = () => {
                                 </Badge>
                                
                                 {/* {basePrice > displayPrice && */}
-                                    <Badge variant="solid" color="primary" className="absolute top-2 right-2 text-md">
+                                    {/* <Badge variant="solid" color="primary" className="absolute top-2 right-2 text-md">
                                         {formattedAmount(((basePrice - displayPrice) * 100) / basePrice)} <span className="ml-1 text-md">%</span>
-                                    </Badge>
+                                    </Badge> */}
                                 {/* } */}
                             </div>
 

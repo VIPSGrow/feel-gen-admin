@@ -47,6 +47,12 @@ const TreeConnector = () => {
     };
 
     const closeModal = () => setSelectedNode(null);
+    useEffect(() => {
+        fetchTreeData()
+    }, []);
+
+
+
     const handleRefresh = () => {
         fetchTreeData()
     }
@@ -69,7 +75,7 @@ const TreeConnector = () => {
                             Network Tree
                         </h1>
                         <p className=" text-gray-600 dark:text-gray-300 max-w-2xl leading-relaxed">
-                            View your sponsor-based referral genealogy through Generation 7.
+                            View your complete binary genealogy tree.
                         </p>
                     </div>
                     <div className="flex gap-3">

@@ -176,7 +176,7 @@ export default function WithdrawalsPage() {
             <ListIcon className="w-6 h-6 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Withdrawals (1 UV = 10 RS)</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Withdrawals</h1>
             <p className="text-gray-500 dark:text-gray-400">Manage user withdrawal requests</p>
           </div>
         </div>

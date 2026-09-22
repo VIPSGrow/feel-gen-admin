@@ -34,7 +34,7 @@ const WalletMetrics = ({ cols = 2 }) => {
             <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 md:p-6">
                 <div className="flex items-center justify-center w-12 h-12 bg-emerald-100 rounded-xl dark:bg-emerald-900/30">
                     {/* <DollarLineIcon className="text-emerald-600 size-6 dark:text-emerald-400" /> */}
-                    <span className="text-emerald-600 size-6 dark:text-emerald-400">UV</span>
+                    <span className="text-emerald-600 size-6 dark:text-emerald-400 text-center">₹</span>
                 </div>
                 <div className="flex items-end justify-between mt-5">
                     <div>

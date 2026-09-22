@@ -136,7 +136,7 @@ const WithdrawalForm = ({ close }: { close: () => void }) => {
         {/* UV Amount Input Field */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Amount to Withdraw (UV)
+            Amount to Withdraw (₹)
           </label>
           <div className="relative">
             <input

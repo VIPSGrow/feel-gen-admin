@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import React from "react";
+import Button from '@/components/ui/button/Button'
+
 import WalletMetrics from "@/components/admin/wallet/WalletMetrics";
 import Transaction from "@/components/admin/wallet/Transaction";
 import QuickShortcuts from "@/components/admin/wallet/QuickShortcuts";
 import SetPin from "@/components/admin/wallet/SetPin";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Wallet | Feel Safe",
@@ -13,6 +16,7 @@ export const metadata: Metadata = {
 
 
 const WalletPage = () => {
+  
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
@@ -25,15 +29,15 @@ const WalletPage = () => {
             Manage balances and commissions. Commissions held 30 days; mature if no product return.
           </p>
         </div>
+        <Link href="/withdrawals"><Button className="w-50 h-14" variant="primary" >Withdraw</Button></Link>
       </div>
       <SetPin />
+      {/* <QuickShortcuts /> */}
       {/* Metrics & Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-5">
-          <QuickShortcuts />
-        </div>
-        <div className="lg:col-span-7">
-          <WalletMetrics cols={3} />
+        
+        <div className="lg:col-span-12">
+          <WalletMetrics cols={5} />
         </div>
       </div>
 

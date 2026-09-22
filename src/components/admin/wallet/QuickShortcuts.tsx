@@ -17,13 +17,13 @@ const QuickShortcuts = () => {
 
   return (
     <>
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 grid grid-cols-2 gap-3">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 dark:text-white">Quick Actions</h3>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           <Button className="w-full h-14" variant="outline" onClick={() => {
             router.push("/withdrawals")
           }}>Withdraw</Button>
-          <Button className="w-full h-14 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700"
+          {/* <Button className="w-full h-14 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700"
             onClick={() => {
               if (user && !user.transaction_pin_hash) {
                 alert("Please create your transaction PIN first to secure your transfers.")
@@ -32,9 +32,9 @@ const QuickShortcuts = () => {
                 setTransModal(true)
               }
             }}
-          >Transfer</Button>
+          >Transfer</Button> */}
 
-          {/* <Button className="w-full h-14" variant="outline">View History</Button> */}
+          
         </div>
       </div>
 
