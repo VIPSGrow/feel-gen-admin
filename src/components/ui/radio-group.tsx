@@ -33,7 +33,7 @@ export function RadioGroupItem({ value, id, name = "", className = '', disabled 
       type="radio"
       id={id}
       value={value}
-      checked={checked}
+      defaultChecked={checked}
       name={name}
       className={`mr-2 h-4 w-4 text-brand-600 border-gray-300 focus:ring-brand-500 dark:border-gray-600 dark:bg-gray-800 dark:checked:bg-brand-500 dark:focus:ring-offset-gray-800 ${className}`}
       disabled={disabled}

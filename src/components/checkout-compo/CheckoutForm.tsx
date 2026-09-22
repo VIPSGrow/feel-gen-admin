@@ -202,15 +202,19 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
     setPaymentMethod('online');
   }, []);
 
+
+
   const walletTotalAmount = (() => {
-    if (!walletData || !Array.isArray(walletData) || walletData.length === 0) {
-      return 0;
-    }
-    const firstWallet = walletData[0];
-    const raw = firstWallet?.withdrawable_amount;
+    if (!walletData) return 0;
+
+    // Agar Array hai to pehla element le, agar direct Object hai to wahi le
+    const wallet = Array.isArray(walletData) ? walletData[0] : walletData;
+    const raw = wallet?.total_balance;
+
     const n = typeof raw === 'number' ? raw : Number(raw);
     return Number.isFinite(n) ? n : 0;
   })();
+
 
 
   const currency = getCurrencyIcon('INR');
@@ -593,7 +597,7 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                   >
                     <RadioGroupItem value="wallet" id="pay-wallet" className="h-5 w-5" name="paymentMethod" checked={paymentMethod === "wallet"} />
                     <Label htmlFor="pay-wallet" className="cursor-pointer">
-                      Wallet (Withdrawable Available: {currency}{walletTotalAmount})
+                      Wallet ({currency}{walletTotalAmount})
                     </Label>
                   </div>
                 </RadioGroup>
