@@ -2,23 +2,38 @@ import React, { useState, useEffect, useRef, MouseEventHandler } from 'react';
 import { TreeUser } from '@/types/network-tree';
 import { ChevronDown, ChevronRight, User, Phone, Mail, Calendar, X } from 'lucide-react';
 
+const RANK_ORDER: Record<string, number> = {
+  'distributor': 1,
+  'silver': 2,
+  'gold': 3,
+  'platinum': 4,
+  'diamond': 5,
+};
+
+function getRankLevel(levelName: string): number {
+  return RANK_ORDER[levelName.toLowerCase()] || 1;
+}
+
 interface TreeNodeProps {
   user: TreeUser;
   level: number;
   position: number;
   onNodeClick: (user: TreeUser) => void;
-
+  distributorLevel: number;
 }
 
 const TreeNode: React.FC<TreeNodeProps> = ({ 
   user, 
   level, 
   position, 
-  onNodeClick 
+  onNodeClick,
+  distributorLevel,
 }) => {
   const nodeRef = useRef<HTMLDivElement>(null);
 
   const joinDate = new Date(user.created_at).toLocaleDateString('en-GB');
+  const nodeRankLevel = getRankLevel(user.level_name || 'distributor');
+  const isGreenZone = nodeRankLevel <= distributorLevel;
 
   const handleClick: MouseEventHandler<HTMLDivElement> = (e) => {
     e.stopPropagation();
@@ -28,8 +43,9 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   return (
     <div 
       ref={nodeRef}
-      className="group relative 
-      bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-lg hover:shadow-xl hover:border-brand-400 transition-all duration-300 min-w-[50px] mx-auto cursor-pointer flex-shrink-0"
+      className={`group relative 
+      ${isGreenZone ? '' : 'opacity-90'}
+      bg-white dark:bg-gray-800 border-2 ${isGreenZone ? 'border-emerald-300 dark:border-emerald-700' : 'border-red-300 dark:border-red-700'} rounded-2xl p-4 shadow-lg hover:shadow-xl hover:border-brand-400 transition-all duration-300 min-w-[50px] mx-auto cursor-pointer flex-shrink-0`}
       style={{ 
         marginTop: '40px',
         transform: `translateX(${position * 320}px)`
@@ -85,9 +101,10 @@ const TreeNode: React.FC<TreeNodeProps> = ({
 
 interface NetworkTreeProps {
   treeData: TreeUser[];
+  distributorLevel: number;
 }
 
-const NetworkTree: React.FC<NetworkTreeProps> = ({ treeData }) => {
+const NetworkTree: React.FC<NetworkTreeProps> = ({ treeData, distributorLevel }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedNode, setSelectedNode] = useState<TreeUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -122,6 +139,7 @@ const NetworkTree: React.FC<NetworkTreeProps> = ({ treeData }) => {
                   level={level}
                   position={index - users.length / 2}
                   onNodeClick={handleNodeSelect}
+                  distributorLevel={distributorLevel}
                 />
                 {/* Always show branch connectors */}
                 <div className="absolute top-[calc(100%+8px)] left-1/2 w-0.5 bg-brand-300 dark:bg-brand-500 h-4 transform -translate-x-1/2 z-10" />

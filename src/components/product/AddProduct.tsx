@@ -1,8 +1,8 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import serverCallFuction, { formattedAmount, formattedAmountPoints } from '@/lib/constantFunction';
+import serverCallFuction, { formattedAmount } from '@/lib/constantFunction';
 import Input from '@/components/form/input/InputField';
-import TextArea from '@/components/form/input/TextArea';
+import RichTextEditor from '@/components/form/editor/RichTextEditor';
 import Select from '@/components/form/Select';
 import MultiSelect from '@/components/ui/select/MultiSelect';
 import DropZone from '@/components/form/DropZone';
@@ -13,7 +13,6 @@ import { Image as ImageIcon, X as XIcon, PlusCircle } from 'lucide-react';
 import VariantManager from '@/app/(admin)/products/add/components/VariantManager';
 import { Modal } from '@/components/ui/modal';
 import VariantsAccordion from '@/app/(admin)/products/add/components/VariantsAccordion';
-import { Metadata } from 'next';
 import { Tax } from '@/types/tax';
 import { useRouter } from 'next/navigation';
 import { useSetting } from '@/context/SettingContext';
@@ -393,24 +392,24 @@ setFormData({
 
         <div>
           <Label htmlFor="description">Description</Label>
-          <TextArea
-            placeholder="Enter product description"
+          <RichTextEditor
             value={formData.description}
             onChange={(value) => {
               setFormData({ ...formData, description: value })
             }}
-            rows={4}
+            placeholder="Enter product description"
+            className="min-h-[200px]"
           />
         </div>
         <div>
           <Label htmlFor="description">Short Description</Label>
-          <TextArea
-            placeholder="Enter product short description"
+          <RichTextEditor
             value={formData.short_description}
             onChange={(value) => {
               setFormData({ ...formData, short_description: value })
             }}
-            rows={4}
+            placeholder="Enter product short description"
+            className="min-h-[150px]"
           />
         </div>
 

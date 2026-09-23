@@ -7,6 +7,23 @@ import { Calendar, CopyIcon, Mail, Phone, RefreshCw, X } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import Button from '@/components/ui/button/Button';
 import { useSearchParams } from 'next/navigation';
+const RANK_ORDER: Record<string, number> = {
+  'distributor': 1,
+  'silver': 2,
+  'gold': 3,
+  'platinum': 4,
+  'diamond': 5,
+};
+
+function getRankLevel(levelName: string): number {
+  return RANK_ORDER[levelName.toLowerCase()] || 1;
+}
+
+function getRelativeLevel(nodePath: string, rootPath: string): number {
+  const nodeDepth = (nodePath.match(/\./g) || []).length + 1;
+  const rootDepth = (rootPath.match(/\./g) || []).length + 1;
+  return (nodeDepth - rootDepth) + 1;
+}
 const TreeConnector = () => {
 
     const [treeData, setTreeData] = React.useState<TreeUser[]>([]);
@@ -18,6 +35,10 @@ const TreeConnector = () => {
     const urlSelectedId = searchParams.get('selectd_id');
 
     const [selectedNode, setSelectedNode] = React.useState<TreeUser | null>(null);
+
+    const distributorLevel = treeData[0]?.level_name
+        ? getRankLevel(treeData[0].level_name)
+        : 3;
 
     const fetchTreeData = async () => {
         try {
@@ -90,7 +111,17 @@ const TreeConnector = () => {
                 </div>
 
 
-                <GenealogyTree data={treeData} onSelect={handleNodeSelect} />
+                <GenealogyTree data={treeData} onSelect={handleNodeSelect} distributorLevel={distributorLevel} />
+                <div className="flex flex-wrap gap-4 mt-4 justify-center">
+                    <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded bg-emerald-500 border-2 border-emerald-300"></div>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Up to Rank (Green Zone)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded bg-red-500 border-2 border-red-300"></div>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Beyond Rank (Red Zone)</span>
+                    </div>
+                </div>
                 {selectedNode &&
                     <Modal
                         // className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-6 animate-in fade-in zoom-in duration-200"
@@ -143,6 +174,24 @@ const TreeConnector = () => {
                                                 </span>
                                                 <span className="font-semibold text-md dark:text-gray-300 ">
                                                     ({selectedNode.referrer ? <>{selectedNode.referrer?.phone}</> : "N/A"})
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span className="text-sm text-gray-500 font-medium uppercase tracking-wide mb-2 block">Level</span>
+                                                <span className="font-semibold text-lg dark:text-gray-300 me-2">
+                                                    {selectedNode?.level_name || 'N/A'}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span className="text-sm text-gray-500 font-medium uppercase tracking-wide mb-2 block">Commission Earned</span>
+                                                <span className="font-semibold text-lg text-emerald-600 dark:text-emerald-400">
+                                                    ₹{selectedNode?.commission_earned ? Number(selectedNode.commission_earned).toLocaleString('en-IN') : '0'}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span className="text-sm text-gray-500 font-medium uppercase tracking-wide mb-2 block">Total Commission</span>
+                                                <span className="font-semibold text-lg text-brand-600 dark:text-brand-400">
+                                                    ₹{selectedNode?.total_commission ? Number(selectedNode.total_commission).toLocaleString('en-IN') : '0'}
                                                 </span>
                                             </div>
                                             <div>
@@ -217,16 +266,5 @@ const TreeConnector = () => {
             </div >
         </>
     )
-}
-function levelFromPath(path: string): number {
-    return (path.match(/\./g) || []).length + 1;
-}
-
-function getRelativeLevel(nodePath: string, rootPath: string): number {
-    const nodeDepth = (nodePath.match(/\./g) || []).length + 1;
-    const rootDepth = (rootPath.match(/\./g) || []).length + 1;
-
-    // Result: Root is Level 1, children are Level 2, etc.
-    return (nodeDepth - rootDepth) + 1;
 }
 export default TreeConnector

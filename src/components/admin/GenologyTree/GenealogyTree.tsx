@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import '@/components/admin/GenologyTree/GenealogyTree.css';
 import { EyeIcon } from '@/icons';
+import { TreeUser } from '@/types/network-tree';
 
 interface Member {
   id: number;
@@ -15,14 +16,30 @@ interface Member {
   is_active: boolean;
   kyc_status: boolean;
   children: Member[];
+  level_name?: string;
+  commission_earned?: string | number;
+  total_commission?: string | number;
 }
 
 interface TreeNodeProps {
   member: Member;
   onSelect: (member: Member) => void;
+  distributorLevel: number;
 }
 
-const TreeNode: React.FC<TreeNodeProps> = ({ member, onSelect }) => {
+const RANK_ORDER: Record<string, number> = {
+  'distributor': 1,
+  'silver': 2,
+  'gold': 3,
+  'platinum': 4,
+  'diamond': 5,
+};
+
+function getRankLevel(levelName: string): number {
+  return RANK_ORDER[levelName.toLowerCase()] || 1;
+}
+
+const TreeNode: React.FC<TreeNodeProps> = ({ member, onSelect, distributorLevel }) => {
   const [isOpen, setIsOpen] = useState(true);
 
   const toggleOpen = (e: React.MouseEvent) => {
@@ -32,16 +49,20 @@ const TreeNode: React.FC<TreeNodeProps> = ({ member, onSelect }) => {
   };
 
   const hasChildren = member.children && member.children.length > 0;
+  const nodeRankLevel = getRankLevel(member.level_name || 'distributor');
+  const isGreenZone = nodeRankLevel <= distributorLevel;
 
   return (
     <li className="bg-warning">
       <a href="#" onClick={(e) => e.preventDefault()}>
         <div
-          className={`member-view-box ${member.kyc_status
-            ? member.is_active
-              ? 'bg-gray-200 dark:bg-gray-500'
-              : 'bg-warning-300 dark:bg-warning-300'
-            : 'bg-error-300 dark:bg-error-300'
+          className={`member-view-box ${isGreenZone
+            ? 'bg-emerald-100 dark:bg-emerald-900/50 border-2 border-emerald-400'
+            : member.kyc_status
+              ? member.is_active
+                ? 'bg-gray-200 dark:bg-gray-500'
+                : 'bg-warning-300 dark:bg-warning-300'
+              : 'bg-error-300 dark:bg-error-300'
             }`}
           onClick={toggleOpen}
         >
@@ -56,8 +77,13 @@ const TreeNode: React.FC<TreeNodeProps> = ({ member, onSelect }) => {
           </div>
           <div className="member-footer">
             <div className="name">
-              <span>{member.username}</span>
-            </div>
+                  <span>{member.username}</span>
+              </div>
+              <div className="flex items-center gap-1 mt-0.5">
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${member.level_name && getRankLevel(member.level_name) <= distributorLevel ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'}`}>
+                      {member.level_name || 'N/A'}
+                  </span>
+              </div>
             <div className="downline">
               <span>{member.referral_code}</span>
               <span
@@ -76,9 +102,9 @@ const TreeNode: React.FC<TreeNodeProps> = ({ member, onSelect }) => {
 
       {hasChildren && isOpen && (
         <ul className="active">
-          {member.children.map((child) => (
-            <TreeNode key={child.id} member={child} onSelect={onSelect} />
-          ))}
+              {member.children.map((child) => (
+                <TreeNode key={child.id} member={child} onSelect={onSelect} distributorLevel={distributorLevel} />
+              ))}
         </ul>
       )}
     </li>
@@ -88,7 +114,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({ member, onSelect }) => {
 const GenealogyTree: React.FC<{
   data: Member[];
   onSelect: (member: Member) => void;
-}> = ({ data, onSelect }) => {
+  distributorLevel: number;
+}> = ({ data, onSelect, distributorLevel }) => {
   return (
     <div className="relative w-full h-[65vh] min-h-[500px] overflow-hidden rounded-[10px] shadow-md bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 select-none">
       <TransformWrapper
@@ -165,6 +192,7 @@ const GenealogyTree: React.FC<{
                           key={rootMember.id}
                           member={rootMember}
                           onSelect={onSelect}
+                          distributorLevel={distributorLevel}
                         />
                       ))
                     ) : (

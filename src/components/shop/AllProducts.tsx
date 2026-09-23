@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
-import { Eye, ShoppingCart, Filter, ChevronDown, Zap, Check, Rocket, ArrowBigLeft } from "lucide-react";
+import { Eye, ShoppingCart, Filter, ChevronDown, Zap, Check, Rocket, ArrowBigLeft, Link } from "lucide-react";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
 import serverCallFuction, { formattedAmount, getCurrencyIcon } from "@/lib/constantFunction";
@@ -18,24 +18,31 @@ interface VariantType {
 }
 
 interface ProductPro {
+    category?: { id: number; name: string; slug: string };
     product: {
         id: number;
         name: string;
-        base_price: number;        
+        slug: string;
+        price: number;
+        cat_id: number;
         f_image?: string;
         hsn_code?: string;
         mrp_percentage?: number;
         dpc_percentage?: number;
-        
         dpc_price?: number;
+        average_rating?: number;
+        total_reviews?: number;
+        total_stock?: number;
     };
     variants: VariantType[];
-    category?: { name: string };
     product_attributes?: Array<{
         id: number;
         name: string;
         values: Array<{ id: number, value: string }>;
     }>;
+    tax_data?: { id: number; name: string; percentage: number };
+    variant_count?: string;
+    subcategories?: Array<any>;
 }
 
 const AllProducts = () => {
@@ -201,46 +208,50 @@ const AllProducts = () => {
 
                     // Priority: Selected Variant Price > Base Price
                     const variantPrice = variant ? Number(variant.price) : 0;
-                    const basePrice = pro.product.base_price;
-                    
-                    
+                    const basePrice = pro.product.price;
+
+
                     // Calculate DPC Price for distributor view
                     const dpcPercentage = pro.product.dpc_percentage || 0;
                     const dpcPrice = pro.product.dpc_price;
-                    
+
                     // Calculate MRP Price for reference (if needed)
                     const mrpPercentage = pro.product.mrp_percentage || 0;
-                    const mrpPrice = pro.product.base_price ?? (mrpPercentage > 0 ? basePrice * (1 + mrpPercentage / 100) : basePrice);
-                    
+                    const mrpPrice = pro.product.price ?? (mrpPercentage > 0 ? basePrice * (1 + mrpPercentage / 100) : basePrice);
+
                     const displayPrice = (variant && variantPrice >= 0) ? variantPrice : dpcPrice;
                     console.log('DISPLAY PRICE - Product:', pro.product.name, 'Variant:', variant?.sku, 'Variant price:', variantPrice, 'Display:', displayPrice);
                     const stock = variant ? variant.stock : pro.total_stock; // Default or unlimited
+                    
                     const currency = getCurrencyIcon('INR');
                     const qty = quantities[proId] || 1;
                     return (
                         <div key={proId} className="group flex flex-col bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all hover:shadow-lg">
                             {/* Image Box */}
-                            <div className="aspect-square bg-gray-100 dark:bg-gray-700 relative overflow-hidden">
-                                {pro.product.f_image ? (
-                                    <img src={pro.product.f_image} alt={pro.product.name} className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No Image</div>
-                                )}
+                            <a href={`/shop/${pro.product.slug}`}>
+                                <div className="aspect-square bg-gray-100 dark:bg-gray-700 relative overflow-hidden">
 
-                                {/* Rating */}
-                                <Badge variant="outline" color="success" className="absolute top-2 left-2 p-0 m-0">
-                                    <Badge variant="solid" color="success" className=" me-3">
-                                        {pro.product?.average_rating ?? 0} <span className="ml-1 ">★</span>
+                                    {pro.product.f_image ? (
+                                        <img src={pro.product.f_image} alt={pro.product.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No Image</div>
+                                    )}
+
+                                    {/* Rating */}
+                                    <Badge variant="outline" color="success" className="absolute top-2 left-2 p-0 m-0">
+                                        <Badge variant="solid" color="success" className=" me-3">
+                                            {pro.product?.average_rating ?? 0} <span className="ml-1 ">★</span>
+                                        </Badge>
+                                        {pro.product?.total_reviews ?? 0} <span className="ml-1 text-xs">Reviews</span>
                                     </Badge>
-                                    {pro.product?.total_reviews ?? 0} <span className="ml-1 text-xs">Reviews</span>
-                                </Badge>
-                               
-                                {/* {basePrice > displayPrice && */}
+
+                                    {/* {basePrice > displayPrice && */}
                                     {/* <Badge variant="solid" color="primary" className="absolute top-2 right-2 text-md">
                                         {formattedAmount(((basePrice - displayPrice) * 100) / basePrice)} <span className="ml-1 text-md">%</span>
                                     </Badge> */}
-                                {/* } */}
-                            </div>
+                                    {/* } */}
+                                </div>
+                            </a>
 
                             {/* Info Box */}
                             <div className="p-5 flex-1 flex flex-col">
@@ -264,7 +275,7 @@ const AllProducts = () => {
                                                     {currency}{formattedAmount(mrpPrice)}
                                                 </span>
                                             )}
-                                            
+
                                         </div>
                                         {variant && <span className="text-[10px] text-gray-500 font-mono">SKU: {variant.sku.trim()}</span>}
                                         {/* <span className="text-[10px] text-gray-900 dark:text-white">HSN Code - {pro.product.hsn_code ?? 'N/A'}</span> */}

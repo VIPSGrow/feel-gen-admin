@@ -1,10 +1,34 @@
 "use client";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Badge from "./ui/badge/Badge";
 import { ArrowUpIcon, GroupIcon } from "@/icons";
 import { Clock, CheckCircle, ArrowDownLeft, ArrowDownRight, Wallet, TrendingUp, Users } from "lucide-react";
 import type { DistributorDashboardData } from "@/types/dashboard";
+import type { MlmPlanResponse } from "@/types/mlm-plan";
+import serverCallFuction from "@/lib/constantFunction";
 import { useRouter } from "next/navigation";
+
+const DEFAULT_RANK_NAMES: Record<number, string> = {
+  0: "Direct Partner",
+  1: "Distributor",
+  2: "Silver",
+  3: "Gold",
+  4: "Platinum",
+  5: "Diamond",
+  6: "Star Diamond",
+  7: "Royal Diamond",
+};
+
+const DEFAULT_RANK_COLORS: Record<number, { bg: string; text: string }> = {
+  0: { bg: "bg-brand-50", text: "text-brand-700 dark:text-brand-300" },
+  1: { bg: "bg-gray-50", text: "text-gray-900 dark:text-white" },
+  2: { bg: "bg-slate-50", text: "text-slate-700 dark:text-slate-300" },
+  3: { bg: "bg-blue-50", text: "text-blue-700 dark:text-blue-300" },
+  4: { bg: "bg-purple-50", text: "text-purple-700 dark:text-purple-300" },
+  5: { bg: "bg-amber-50", text: "text-amber-700 dark:text-amber-300" },
+  6: { bg: "bg-pink-50", text: "text-pink-700 dark:text-pink-300" },
+  7: { bg: "bg-rose-50", text: "text-rose-700 dark:text-rose-300" },
+};
 
 // Helper to format amount string directly (since API returns strings)
 const formatAmount = (value: string | undefined): string => {
@@ -31,6 +55,36 @@ interface DistributorDashboardProps {
 
 export const DistributorDashboard = ({ data, loading }: DistributorDashboardProps) => {
     const router = useRouter();
+    const [rankNames, setRankNames] = useState<Record<number, string>>({});
+
+    useEffect(() => {
+        const fetchRanks = async () => {
+            try {
+                const response = await serverCallFuction<MlmPlanResponse>("GET", "api/settings/mlm-plan");
+                if (response && response.data?.ranks) {
+                    const mapped: Record<number, string> = {};
+                    (response.data.ranks as Array<{ id: number; rank_name: string }>).forEach((rank, index) => {
+                        mapped[index + 1] = rank.rank_name;
+                    });
+                    setRankNames(mapped);
+                }
+            } catch {
+                // Use defaults
+            }
+        };
+        fetchRanks();
+    }, []);
+
+    const getRankName = (level: number): string => {
+        if (level === 0) return "Direct Partner";
+        if (rankNames[level]) return rankNames[level];
+        return DEFAULT_RANK_NAMES[level] || `Level ${level}`;
+    };
+
+    const getRankColor = (level: number): { bg: string; text: string } => {
+        if (DEFAULT_RANK_COLORS[level]) return DEFAULT_RANK_COLORS[level];
+        return { bg: "bg-gray-50", text: "text-gray-900 dark:text-white" };
+    };
 
     if (loading) {
         return (
@@ -133,12 +187,16 @@ export const DistributorDashboard = ({ data, loading }: DistributorDashboardProp
                     </button>
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-                    {[0, 1, 2, 3, 4, 5, 6, 7].map((level) => (
-                        <div key={level} className="rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{level === 0 ? 'Direct Partner' : `Generation ${level}`}</p>
-                            <p className="mt-1 font-semibold text-gray-900 dark:text-white">₹{formatAmount(String(commissionAmount(data, level) || 0))}</p>
-                        </div>
-                    ))}
+                    {[0, 1, 2, 3, 4, 5, 6, 7].map((level) => {
+                        const rankName = getRankName(level);
+                        const colors = getRankColor(level);
+                        return (
+                            <div key={level} className={`rounded-lg ${colors.bg} p-3 dark:bg-gray-800`}>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{rankName}</p>
+                                <p className={`mt-1 font-semibold ${colors.text}`}>₹{formatAmount(String(commissionAmount(data, level) || 0))}</p>
+                            </div>
+                        );
+                    })}
                     <div className="rounded-lg bg-success-50 p-3 dark:bg-success-900/20">
                         <p className="text-xs text-success-700 dark:text-success-300">Total commission</p>
                         <p className="mt-1 font-semibold text-success-700 dark:text-success-300">₹{formatAmount(data?.transactions?.total_commissions)}</p>

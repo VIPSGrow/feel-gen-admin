@@ -2,14 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import serverCallFuction from '@/lib/constantFunction';
 import Input from '@/components/form/input/InputField';
-import TextArea from '@/components/form/input/TextArea';
+import RichTextEditor from '@/components/form/editor/RichTextEditor';
 import Select from '@/components/form/Select';
 import MultiSelect from '@/components/ui/select/MultiSelect';
 import DropZone from '@/components/form/DropZone';
 import Button from '@/components/ui/button/Button';
 import Alert from '@/components/ui/alert/Alert';
 import Label from '@/components/form/Label';
-import { Image as ImageIcon, X as XIcon, PlusCircle } from 'lucide-react';
+import { X as XIcon, PlusCircle } from 'lucide-react';
 import VariantManager from '@/app/(admin)/products/add/components/VariantManager';
 import { Modal } from '@/components/ui/modal';
 import VariantsAccordion from '@/app/(admin)/products/add/components/VariantsAccordion';
@@ -388,11 +388,12 @@ const EditProductPage = ({ productId }: Props) => {
 
         <div>
           <Label>Description</Label>
-          <TextArea
+          <RichTextEditor
             name="description"
             value={formData.description}
             onChange={(val) => setFormData(prev => ({ ...prev, description: val }))}
             rows={5}
+            className="min-h-[200px]"
           />
         </div>
 

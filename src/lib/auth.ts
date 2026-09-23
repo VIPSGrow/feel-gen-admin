@@ -159,6 +159,7 @@ export const rolePermissions: Record<string, string[]> = {
     // 'inventory',
     'purchase',
     'shop',
+    'shop/[slug]',
     'cart',
     'distributor-orders',
     
