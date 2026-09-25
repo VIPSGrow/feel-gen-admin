@@ -170,7 +170,7 @@ export default function MlmRewards() {
     }
   };
 
-  const canManage = hasPermission("commissions");
+  const canManage = hasPermission("rewards/add");
 
   if (loading) return <div className="p-6 text-center">Loading rewards...</div>;
 

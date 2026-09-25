@@ -99,6 +99,7 @@ export const rolePermissions: Record<string, string[]> = {
     // 'level-capping/add',
     // 'level-milestone',
     'rewards',
+    'rewards/add',
     'p-transactions',
     'transactions',    
     'gst-tds',
