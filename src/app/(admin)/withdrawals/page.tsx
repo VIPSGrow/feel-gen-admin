@@ -206,7 +206,7 @@ export default function WithdrawalsPage() {
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">Withdraw Funds</h2>
-              <p className="text-sm text-gray-500">Convert your UV to INR instantly</p>
+              {/* <p className="text-sm text-gray-500">Convert your UV to INR instantly</p> */}
             </div>
           </div>
 
