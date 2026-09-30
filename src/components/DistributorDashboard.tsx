@@ -170,7 +170,7 @@ export const DistributorDashboard = ({ data, loading }: DistributorDashboardProp
                     </div>
                     <div className="mt-5">
                         <span className="text-sm text-success-500 dark:text-success-400">
-                            Available Balance
+                            Withdrawable Balance
                         </span>
                         <h4 className="mt-2 font-bold text-success-800 text-title-sm dark:text-white/90">
                             ₹{formatAmount(data?.wallet?.withdrawable_amount || data?.wallet?.available_balance)}
