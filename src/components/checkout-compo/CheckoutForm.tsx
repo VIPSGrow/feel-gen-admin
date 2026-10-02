@@ -829,28 +829,36 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
               <CardTitle>Company Bank Details</CardTitle>
             </CardHeader>
             <CardContent>
-              <table width={"100%"} border={1}>
-                <tr>
-                  <th className="text-left">Account Holder</th>
-                  <td>FEEL SAFE PRIVATE LIMITED</td>
-                </tr>
-                <tr>
-                  <th className="text-left">Account Number</th>
-                  <td>50200120760164</td>
-                </tr>
-                <tr>
-                  <th className="text-left">IFSC</th>
-                  <td>HDFC0000438</td>
-                </tr>
-                <tr>
-                  <th className="text-left">Branch</th>
-                  <td>NAJAFGARH</td>
-                </tr>
-                <tr>
-                  <th className="text-left">Account Type</th>
-                  <td>Current Account</td>
-                </tr>
-              </table>
+              <div className='grid grid-cols-12'>
+                <div className="lg:col-span-9 ">
+                  <table width={"100%"} border={1}>
+                    <tr>
+                      <th className="text-left">Account Holder</th>
+                      <td>FEEL SAFE PRIVATE LIMITED</td>
+                    </tr>
+                    <tr>
+                      <th className="text-left">Account Number</th>
+                      <td>50200120760164</td>
+                    </tr>
+                    <tr>
+                      <th className="text-left">IFSC</th>
+                      <td>HDFC0000438</td>
+                    </tr>
+                    <tr>
+                      <th className="text-left">Branch</th>
+                      <td>NAJAFGARH</td>
+                    </tr>
+                    <tr>
+                      <th className="text-left">Account Type</th>
+                      <td>Current Account</td>
+                    </tr>
+                  </table>
+                </div>
+
+                <div className="lg:col-span-3">
+                  <img src="http://localhost:5000/uploads/docs/bank.png" alt="Bank Details" className="w-full h-auto" />
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
