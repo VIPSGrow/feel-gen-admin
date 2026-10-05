@@ -7,22 +7,23 @@ import { Calendar, CopyIcon, Mail, Phone, RefreshCw, X } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import Button from '@/components/ui/button/Button';
 import { useSearchParams } from 'next/navigation';
+import { useToast } from '@/context/ToastContext';
 const RANK_ORDER: Record<string, number> = {
-  'distributor': 1,
-  'silver': 2,
-  'gold': 3,
-  'platinum': 4,
-  'diamond': 5,
+    'distributor': 1,
+    'silver': 2,
+    'gold': 3,
+    'platinum': 4,
+    'diamond': 5,
 };
 
 function getRankLevel(levelName: string): number {
-  return RANK_ORDER[levelName.toLowerCase()] || 1;
+    return RANK_ORDER[levelName.toLowerCase()] || 1;
 }
 
 function getRelativeLevel(nodePath: string, rootPath: string): number {
-  const nodeDepth = (nodePath.match(/\./g) || []).length + 1;
-  const rootDepth = (rootPath.match(/\./g) || []).length + 1;
-  return (nodeDepth - rootDepth) + 1;
+    const nodeDepth = (nodePath.match(/\./g) || []).length + 1;
+    const rootDepth = (rootPath.match(/\./g) || []).length + 1;
+    return (nodeDepth - rootDepth) + 1;
 }
 const TreeConnector = () => {
 
@@ -40,7 +41,12 @@ const TreeConnector = () => {
         ? getRankLevel(treeData[0].level_name)
         : 3;
 
-    const fetchTreeData = async () => {
+    const { loading: showLoadingToast, error, update } = useToast();
+
+    const fetchTreeData = async (notify = false) => {
+        const toastId = notify
+            ? showLoadingToast('Refreshing tree, please wait...')
+            : null;
         try {
             setLoading(true);
             const endpoint = urlSelectedId
@@ -50,10 +56,25 @@ const TreeConnector = () => {
             setLoading(false);
             if (res.status) {
                 setTreeData(res.data);
+                if (toastId) {
+                    update(toastId, 'success', 'Tree refreshed successfully');
+                }
+            } else {
+                if (toastId) {
+                    update(toastId, 'warning', res.message || 'Could not refresh tree');
+                }
             }
-        } catch (error) {
+
+        } catch (err) {
             setLoading(false);
-            console.error('Error fetching tree data:', error);
+            console.error('Error fetching tree data:', err);
+            const message =
+                err instanceof Error ? err.message : 'Something went wrong while refreshing the tree';
+            if (toastId) {
+                update(toastId, 'error', message);
+            } else {
+                error(message);
+            }
         }
     }
     // 2. Fetch data whenever the URL ID changes
@@ -75,7 +96,7 @@ const TreeConnector = () => {
 
 
     const handleRefresh = () => {
-        fetchTreeData()
+        fetchTreeData(true)
     }
 
     const [copied, setCopied] = useState(false);

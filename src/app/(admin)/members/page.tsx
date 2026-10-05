@@ -213,10 +213,13 @@ const MembersPage = () => {
               className="pl-10"
             />
           </div>
-          <Button onClick={openAdd} className="gap-2">
-            <Plus className="w-4 h-4" />
-            Add Member
-          </Button>
+          {isSuperAdmin && (
+            <Button onClick={openAdd} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Add Member
+            </Button>
+          )}
+          
         </div>
       </div>
 
@@ -284,13 +287,14 @@ const MembersPage = () => {
                           >
                             <Network className="w-4 h-4" />
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEdit(member)}
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
+                          {isSuperAdmin &&
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openEdit(member)}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>}
                           {isSuperAdmin ? (
                             <Button
                               variant="outline"
@@ -308,14 +312,16 @@ const MembersPage = () => {
                               <File className="w-4 h-4" />
                             </Button>
                           )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDelete(member.id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          {isSuperAdmin &&
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(member.id)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          }
                         </div>
                       </TableCell>
                     </TableRow>

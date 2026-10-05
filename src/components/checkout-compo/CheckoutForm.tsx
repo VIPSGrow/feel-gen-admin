@@ -856,7 +856,7 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                 </div>
 
                 <div className="lg:col-span-3">
-                  <img src="http://localhost:5000/uploads/docs/bank.png" alt="Bank Details" className="w-full h-auto" />
+                  <img src={`${process.env.NEXT_PUBLIC_API_URL}/uploads/docs/bank.png`} alt="Bank Details" className="w-full h-auto" />
                 </div>
               </div>
             </CardContent>

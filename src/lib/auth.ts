@@ -165,7 +165,7 @@ export const rolePermissions: Record<string, string[]> = {
     'distributor-orders',
     
     'placed_order',
-    'recieved_order',
+    // 'recieved_order',
     'commissions',    
     // 'level-milestone',
     'rewards',
@@ -173,7 +173,7 @@ export const rolePermissions: Record<string, string[]> = {
     'gst-tds',
     'ranks',
     'kyc',
-    'reports',
+    // 'reports',
     'checkout',
     'activation',
     'my-tickets',

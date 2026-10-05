@@ -10,6 +10,7 @@ import { NotificationProvider } from '@/context/NotificationContext';
 import { PreloaderProvider } from '@/context/PreloaderContext';
 import { WalletProvider } from '@/context/WalletContext';
 import { PwaProvider } from '@/context/PwaContext';
+import { ToastProvider } from '@/context/ToastContext';
 import PwaRegister from '@/components/PwaRegister';
 
 const outfit = Outfit({
@@ -65,7 +66,9 @@ export default function RootLayout({
                 <SettingProvider>
                   <WalletProvider>
                     <NotificationProvider>
-                      <SidebarProvider>{children}</SidebarProvider>
+                      <ToastProvider>
+                        <SidebarProvider>{children}</SidebarProvider>
+                      </ToastProvider>
                     </NotificationProvider>
                   </WalletProvider>
                 </SettingProvider>
