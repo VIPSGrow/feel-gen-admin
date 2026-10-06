@@ -3,6 +3,7 @@ import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import '@/components/admin/GenologyTree/GenealogyTree.css';
 import { EyeIcon } from '@/icons';
 import { TreeUser } from '@/types/network-tree';
+import { Dot } from 'lucide-react';
 
 interface Member {
   id: number;
@@ -16,7 +17,7 @@ interface Member {
   is_active: boolean;
   kyc_status: boolean;
   children: Member[];
-  level_name?: string;
+  rank_name?: string;
   commission_earned?: string | number;
   total_commission?: string | number;
 }
@@ -49,20 +50,19 @@ const TreeNode: React.FC<TreeNodeProps> = ({ member, onSelect, distributorLevel 
   };
 
   const hasChildren = member.children && member.children.length > 0;
-  const nodeRankLevel = getRankLevel(member.level_name || 'distributor');
+  const nodeRankLevel = getRankLevel(member.rank_name || 'distributor');
   const isGreenZone = nodeRankLevel <= distributorLevel;
+  const is_qualified = member.qualification.is_qualified;
 
   return (
     <li className="bg-warning">
       <a href="#" onClick={(e) => e.preventDefault()}>
         <div
-          className={`member-view-box ${isGreenZone
-            ? 'bg-emerald-100 dark:bg-emerald-900/50 border-2 border-emerald-400'
-            : member.kyc_status
-              ? member.is_active
-                ? 'bg-gray-200 dark:bg-gray-500'
-                : 'bg-warning-300 dark:bg-warning-300'
-              : 'bg-error-300 dark:bg-error-300'
+          className={`member-view-box ${member.kyc_status
+            ? member.is_active
+              ? 'bg-gray-200 dark:bg-gray-500'
+              : 'bg-warning-300 dark:bg-warning-300'
+            : 'bg-error-300 dark:bg-error-300'
             }`}
           onClick={toggleOpen}
         >
@@ -77,13 +77,13 @@ const TreeNode: React.FC<TreeNodeProps> = ({ member, onSelect, distributorLevel 
           </div>
           <div className="member-footer">
             <div className="name">
-                  <span>{member.username}</span>
-              </div>
-              <div className="flex items-center gap-1 mt-0.5">
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${member.level_name && getRankLevel(member.level_name) <= distributorLevel ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'}`}>
-                      {member.level_name || 'N/A'}
-                  </span>
-              </div>
+              <span>{member.username}</span>
+            </div>
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className={`text-[10px] px-1.5 py-0.5 rounded ${member.rank_name && getRankLevel(member.rank_name) <= distributorLevel ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'}`}>
+                {member.rank_name || 'N/A'}
+              </span>
+            </div>
             <div className="downline">
               <span>{member.referral_code}</span>
               <span
@@ -97,14 +97,22 @@ const TreeNode: React.FC<TreeNodeProps> = ({ member, onSelect, distributorLevel 
               </span>
             </div>
           </div>
+
+
+          
+          <div className={`absolute bottom-0 right-0 flex min-h-5 min-w-5 items-center justify-center rounded-full ${is_qualified ? 'bg-emerald-500' : 'bg-red-500'} px-1 text-[10px] font-bold text-white ring-2 ring-white dark:ring-gray-900`}>
+            {10 - member.qualification.downline_purchased_count}
+          </div>
+
+
         </div>
       </a>
 
       {hasChildren && isOpen && (
         <ul className="active">
-              {member.children.map((child) => (
-                <TreeNode key={child.id} member={child} onSelect={onSelect} distributorLevel={distributorLevel} />
-              ))}
+          {member.children.map((child) => (
+            <TreeNode key={child.id} member={child} onSelect={onSelect} distributorLevel={distributorLevel} />
+          ))}
         </ul>
       )}
     </li>

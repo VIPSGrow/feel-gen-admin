@@ -3,15 +3,16 @@ import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
 import NotificationDropdown from "@/components/header/NotificationDropdown";
 import UserDropdown from "@/components/header/UserDropdown";
 import { useAuth } from "@/context/AuthContext";
-
+import Badge from "@/components/ui/badge/Badge";
 import { useSidebar } from "@/context/SidebarContext";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useState, useEffect, useRef } from "react";
 import PwaInstallButton from "@/components/ui/PwaInstallButton";
+import { Dot } from "lucide-react";
 
 const AppHeader: React.FC = () => {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
 
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
 
@@ -136,9 +137,13 @@ const AppHeader: React.FC = () => {
             } items-center justify-between w-full gap-4 px-5 py-4 lg:flex shadow-theme-md lg:justify-end lg:px-0 lg:shadow-none`}
         >
           <div className="flex items-center gap-2 2xsm:gap-3">
+            <Badge color={ user.qualification.is_qualified ? "success" : "danger" }>
+              {user.qualification.is_qualified ? "Qualified" : "Not Qualified"}
+              <Dot  size={40} color={ user.qualification.is_qualified ? "green" : "red" } />
+            </Badge>
             {/* <!-- PWA Install Button (hidden on mobile, shown on desktop) --> */}
-            <div className="hidden lg:block">
-              <PwaInstallButton compact />
+            <div className="lg:block">
+              <PwaInstallButton compact/>
             </div>
 
             {/* <!-- Dark Mode Toggler --> */}

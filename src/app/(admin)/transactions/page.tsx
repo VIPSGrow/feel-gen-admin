@@ -258,9 +258,9 @@ const TransactionsPage = () => {
                   <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-gray-100 text-left">
                     Commission Type
                   </TableCell>
-                  <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-gray-100 text-left">
+                  {/* <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-gray-100 text-left">
                     Generation
-                  </TableCell>
+                  </TableCell> */}
                   <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-gray-100 text-left">
                     Source User
                   </TableCell>
@@ -307,9 +307,9 @@ const TransactionsPage = () => {
                         {tx.commission_type || tx.category || 'Commission'}
                       </TableCell>
 
-                      <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">
+                      {/* <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">
                         {tx.generation_level ? `Generation ${tx.generation_level}` : 'Direct Partner'}
-                      </TableCell>
+                      </TableCell> */}
 
                       <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">
                         {tx.source_user || tx.full_name || '-'}

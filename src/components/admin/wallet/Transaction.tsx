@@ -93,7 +93,7 @@ const Transaction = ({ category = "" }) => {
                 <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-gray-100 text-left">Type</TableCell>
                 <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-gray-100 text-left">Amount</TableCell>
                 <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-gray-100 text-left">Commission Type</TableCell>
-                <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-gray-100 text-left">Generation</TableCell>
+                {/* <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-gray-100 text-left">Generation</TableCell> */}
                 <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-gray-100 text-left">Source User</TableCell>
                 <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-gray-100 text-left">Order / Package</TableCell>
                 <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-gray-100 text-left">Status</TableCell>
@@ -110,8 +110,8 @@ const Transaction = ({ category = "" }) => {
                   </TableCell>
                   <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300 font-bold text-emerald-600">₹{formattedAmount(Number(tx.total_amount ?? tx.amount ?? 0))}</TableCell>
                   <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">{tx.commission_type || tx.category || "Commission"}</TableCell>
-                  <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">{tx.generation_level ? `Generation ${tx.generation_level}` : "Direct Partner"}</TableCell>
-                  <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">{tx.source_user || tx.full_name || "-"}</TableCell>
+                  {/* <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">{tx.generation_level ? `Generation ${tx.generation_level}` : "Direct Partner"}</TableCell> */}
+                  <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">{tx.source_user || (tx.full_name ? (tx.full_name + ` (${tx.phone ? tx.phone : '-'})`) : "-")}</TableCell>
                   <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">{tx.order_reference || tx.remarks || "-"}</TableCell>
                   <TableCell>
                     <Badge color={(tx.commission_status || tx.status) === "mature" || (tx.commission_status || tx.status) === "completed" ? "success" : (tx.commission_status || tx.status) === "pending" ? "warning" : "error"}>

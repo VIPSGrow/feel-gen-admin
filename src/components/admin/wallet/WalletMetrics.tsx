@@ -29,7 +29,7 @@ const WalletMetrics = ({ cols = 2 }) => {
 
 
     return (
-        <div className={`grid grid-cols-1 gap-4 sm:grid-cols-${cols} md:gap-6`}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 md:gap-5">
             {/* Total Balance */}
             <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 md:p-6">
                 <div className="flex items-center justify-center w-12 h-12 bg-emerald-100 rounded-xl dark:bg-emerald-900/30">
@@ -55,8 +55,9 @@ const WalletMetrics = ({ cols = 2 }) => {
                         <span className="text-sm text-gray-500 dark:text-gray-400">Pending Amount</span>
                         <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white">₹{formattedAmount(Number(walletData?.pending_amount ?? walletData?.pending_balance ?? 0))}</h4>
                     </div>
-                    <Badge color="warning">Pending</Badge>
+                    
                 </div>
+                <Badge color="warning">Pending</Badge>
             </div>
 
             {/* Mature Commissions */}

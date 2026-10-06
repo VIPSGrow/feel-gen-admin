@@ -19,6 +19,7 @@ export interface TransactionItem {
   user_id: number;
   username: string;
   full_name: string;
+  phone: string;
   amount: string;
   type: 'credit' | 'debit' | string;
   category: string;

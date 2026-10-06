@@ -1,5 +1,8 @@
 "use client"
-import React from 'react'
+import React, { useEffect } from 'react'
+import { useAuth } from '@/context/AuthContext'
+import serverCallFuction from '@/lib/constantFunction'
+import type { User } from '@/lib/auth'
 import { EcommerceMetrics } from './ecommerce/EcommerceMetrics'
 import QuickActionDash from './ecommerce/QuickActionDash'
 import MonthlySalesChart from './ecommerce/MonthlySalesChart'
@@ -11,6 +14,31 @@ import type { DashboardData, DashboardCharts, DashboardOrder, DistributorDashboa
 
 const DashboardCompo = () => {
     const { data, loading, isDistributor } = useDashboard()
+    const { user, updateUserProfile } = useAuth()
+    const userId = user?.id
+
+    // Fetch fresh user data when the dashboard loads
+    useEffect(() => {
+        if (!userId) return
+        let cancelled = false
+        ;(async () => {
+            try {
+                const resp = await serverCallFuction<{ status?: boolean; user?: Partial<User> }>(
+                    'GET',
+                    `api/users/by_id/${userId}`
+                )
+                if (!cancelled && resp && resp.status !== false && resp.user) {
+                    updateUserProfile(resp.user)
+                }
+            } catch {
+                // keep existing user data
+            }
+        })()
+        return () => {
+            cancelled = true
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userId])
 
     // If user is a Distributor, show Distributor-specific dashboard
     if (isDistributor) {

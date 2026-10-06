@@ -20,7 +20,8 @@ function getRankLevel(levelName: string): number {
     return RANK_ORDER[levelName.toLowerCase()] || 1;
 }
 
-function getRelativeLevel(nodePath: string, rootPath: string): number {
+function getRelativeLevel(nodePath?: string | null, rootPath?: string | null): number {
+    if (!nodePath || !rootPath) return 1;
     const nodeDepth = (nodePath.match(/\./g) || []).length + 1;
     const rootDepth = (rootPath.match(/\./g) || []).length + 1;
     return (nodeDepth - rootDepth) + 1;
@@ -270,7 +271,7 @@ const TreeConnector = () => {
                                             <div className="text-center">
                                                 <div className="text-2xl font-black text-blue-600 dark:text-blue-400 mb-1">
                                                     {/* Lv. {levelFromPath(selectedNode.node_path)} */}
-                                                    Lv. {getRelativeLevel(selectedNode.node_path, treeData[0].node_path)}
+                                                    Lv. {getRelativeLevel(selectedNode.node_path, treeData[0]?.node_path)}
                                                 </div>
                                                 <div className="text-xs uppercase text-blue-700 dark:text-blue-300 font-semibold tracking-wide">
                                                     Depth Level
