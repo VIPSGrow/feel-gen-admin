@@ -50,6 +50,24 @@ export type RazorpayOrderResponse = ApiResponse<RazorpayOrder>;
 
 export type RazorpayVerifyResponse = ApiResponse<{orderId: string}>;
 
+// Payment method types for distributor order placement
+export type PaymentMethod = 'razorpay' | 'wallet' | 'split';
+
+export interface SplitPaymentEntry {
+  method: 'wallet' | 'razorpay';
+  amount: number;
+  razorpay_order_id?: string;
+  razorpay_payment_id?: string;
+  razorpay_signature?: string;
+}
+
+export interface OrderPlacementResponseData {
+  payment_status: 'paid' | 'partially_paid' | 'unpaid';
+  paid_amount: number;
+  order_id: string;
+  order_status?: string;
+}
+
 // CheckoutForm props
 export interface CheckoutFormProps {
   selectedPackage: PurchasePackage;

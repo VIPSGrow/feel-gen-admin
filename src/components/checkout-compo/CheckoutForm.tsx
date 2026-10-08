@@ -9,7 +9,7 @@ import Input from '@/components/form/input/InputField';
 import Label from '@/components/form/Label';
 import Image from 'next/image';
 import { BackendCartItem } from '@/types/cart';
-import { RazorpayPaymentResponse } from '@/types/purchase';
+import { RazorpayPaymentResponse, RazorpayOrder, SplitPaymentEntry, OrderPlacementResponseData } from '@/types/purchase';
 import serverCallFuction, { formattedAmountCommas } from '@/lib/constantFunction';
 import { formattedAmount, getCurrencyIcon } from '@/lib/constantFunction';
 import { useAuth } from '@/context/AuthContext';
@@ -23,7 +23,7 @@ import { States } from '@/types/static-content';
 import { usePreloader } from '@/context/PreloaderContext';
 import { useWallet } from '@/context/WalletContext';
 
-type PaymentMethod = 'online' | 'wallet';
+type PaymentMethod = 'razorpay' | 'wallet' | 'split';
 
 
 declare global {
@@ -190,28 +190,55 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
   const { showLoader, hideLoader } = usePreloader();
 
   const { walletData, isLoading: walletLoading } = useWallet();
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('online');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('razorpay');
+
+  // Split payment state
+  const [splitWalletAmount, setSplitWalletAmount] = useState<number>(0);
+  const [splitRazorpayAmount, setSplitRazorpayAmount] = useState<number>(0);
+  const [splitRazorpayOrderData, setSplitRazorpayOrderData] = useState<RazorpayOrder | null>(null);
+
+  // Reset split razorpay order data when split amounts change
+  useEffect(() => {
+    if (splitRazorpayOrderData) {
+      setSplitRazorpayOrderData(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [splitWalletAmount, splitRazorpayAmount]);
 
   // NOTE: Do not use an extra effect to set default payment method.
   // RadioGroup should render correctly from initial state.
 
-
   useEffect(() => {
     // Ensure default selection is visually applied on initial render.
     // Some RadioGroup implementations require explicit state-setting after mount.
-    setPaymentMethod('online');
+    setPaymentMethod('razorpay');
   }, []);
 
 
 
+  // const walletTotalAmount = (() => {
+  //   if (!walletData) return 0;
+
+  //   // Agar Array hai to pehla element le, agar direct Object hai to wahi le
+  //   const wallet = Array.isArray(walletData) ? walletData[0] : walletData;
+  //   const raw = wallet?.withdrawable_amount;
+
+  //   const n = typeof raw === 'number' ? raw : Number(raw);
+  //   return Number.isFinite(n) ? n : 0;
+  // })();
+
   const walletTotalAmount = (() => {
     if (!walletData) return 0;
 
-    // Agar Array hai to pehla element le, agar direct Object hai to wahi le
-    const wallet = Array.isArray(walletData) ? walletData[0] : walletData;
-    const raw = wallet?.total_balance;
+    // Agar response me nested .data hai to pehle use nikalen
+    const actualData = (walletData as any)?.data ?? walletData;
 
-    const n = typeof raw === 'number' ? raw : Number(raw);
+    // Agar array ho to first item, warna direct object
+    const wallet = Array.isArray(actualData) ? actualData[0] : actualData;
+
+    const raw = wallet?.withdrawable_amount;
+
+    const n = typeof raw === 'number' ? raw : parseFloat(String(raw));
     return Number.isFinite(n) ? n : 0;
   })();
 
@@ -298,7 +325,8 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
     razorpayPaymentId: string,
     razorpayOrderId: string,
     razorpaySignature: string,
-    paymentMethod = 'razorpay',
+    method: PaymentMethod,
+    splitPayments?: SplitPaymentEntry[],
   ) => {
     try {
       showLoader('Almost done! Loading...');
@@ -315,18 +343,38 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
         dimension_length: item.product?.dimension_length || null,
       }));
 
-      const res = await serverCallFuction('POST', 'api/orders/d_p_o', {
+      const payload: Record<string, unknown> = {
         items,
         shipping_address: selectedAddress,
-        payment_method: paymentMethod,
-        razorpay_payment_id: razorpayPaymentId,
-        razorpay_order_id: razorpayOrderId,
-        razorpay_signature: razorpaySignature,
-      });
+      };
 
-      if (res.success) {
+      if (method === 'split' && splitPayments) {
+        payload.payment_method = 'split';
+        payload.payments = splitPayments;
+      } else if (method === 'wallet') {
+        payload.payment_method = 'wallet';
+      } else {
+        payload.payment_method = 'razorpay';
+        payload.razorpay_payment_id = razorpayPaymentId;
+        payload.razorpay_order_id = razorpayOrderId;
+        payload.razorpay_signature = razorpaySignature;
+      }
+
+      const res = await serverCallFuction('POST', 'api/orders/d_p_o', payload);
+
+      if (res.success || res.status) {
+        const responseData = (res.data || res) as OrderPlacementResponseData;
+        const paymentStatus = responseData?.payment_status || 'paid';
+        const paidAmount = responseData?.paid_amount ?? totalAmount;
+        const orderId = responseData?.order_id || '';
+
         await serverCallFuction('DELETE', 'api/ecom/cart/d_clear');
-        alert('Order placed successfully!');
+        alert(
+          `Order placed successfully!\n` +
+          `Order ID: ${orderId}\n` +
+          `Payment Status: ${paymentStatus}\n` +
+          `Paid Amount: ${currency}${paidAmount}`,
+        );
         onSuccess();
         hideLoader();
       } else {
@@ -341,45 +389,7 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
   const handlePayment = async (e?: React.FormEvent) => {
     e?.preventDefault();
 
-    // Wallet flow
-    if (paymentMethod === 'wallet') {
-      if (walletLoading) {
-        alert('Wallet is loading. Please wait');
-        return;
-      }
-
-      if (walletTotalAmount < totalAmount) {
-        alert(`Insufficient wallet balance. Available: ${currency}${walletTotalAmount}`);
-        return;
-      }
-
-      if (isBelowMinLimit) {
-        alert('Minimum order total is 1 Lakh INR.');
-        return;
-      }
-
-      if (!formData.full_name || !formData.phone || formData.phone.length !== 10) {
-        alert('Please fill valid name and 10-digit phone');
-        return;
-      }
-
-      if (!selectedAddress) {
-        alert('Please select a shipping address or add one in profile');
-        return;
-      }
-
-      setLoading(true);
-      try {
-        await placePurchaseOrder('', '', '', 'wallet');
-      } catch (err) {
-        alert(`Payment failed: ${(err as Error).message}`);
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-
-
+    // Common validations
     if (isBelowMinLimit) {
       alert('Minimum order total is 1 Lakh INR.');
       return;
@@ -395,61 +405,187 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
       return;
     }
 
+    // Wallet flow
+    if (paymentMethod === 'wallet') {
+      if (walletLoading) {
+        alert('Wallet is loading. Please wait');
+        return;
+      }
+
+      if (walletTotalAmount < totalAmount) {
+        alert(`Insufficient wallet balance. Available: ${currency}${walletTotalAmount}`);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        await placePurchaseOrder('', '', '', 'wallet');
+      } catch (err) {
+        alert(`Payment failed: ${(err as Error).message}`);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Razorpay flow
+    if (paymentMethod === 'razorpay') {
+      if (!window.Razorpay || !razorpayLoaded) {
+        alert('Razorpay loading... Please wait');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const order = await createRazorpayOrder(totalAmount, cartItems);
+
+        const options = {
+          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_Sfdk41BOifNjN9',
+          amount: order.amount,
+          currency: order.currency,
+          name: 'Feel Safe Shop',
+          description: `Order Total ₹${totalAmount.toLocaleString()}`,
+          order_id: order.id,
+          prefill: {
+            name: formData.full_name,
+            email: formData.email,
+            contact: formData.phone,
+          },
+          theme: { color: '#3399cc' },
+          handler: async (response: RazorpayPaymentResponse) => {
+            try {
+              await verifyPayment({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              });
+              await placePurchaseOrder(
+                response.razorpay_payment_id,
+                response.razorpay_order_id,
+                response.razorpay_signature,
+                'razorpay',
+              );
+            } catch (err) {
+              alert(`Payment failed: ${(err as Error).message}`);
+              router.push('/cart');
+            }
+          },
+        };
+
+        const paymentObject = new window.Razorpay(options);
+        paymentObject.open();
+      } catch (error) {
+        hideLoader();
+        alert(`Error: ${(error as Error).message}`);
+      } finally {
+        hideLoader();
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Split payment flow
+    if (paymentMethod === 'split') {
+      if (walletLoading) {
+        alert('Wallet is loading. Please wait');
+        return;
+      }
+
+      const sum = splitWalletAmount + splitRazorpayAmount;
+      if (sum !== totalAmount) {
+        alert(`Wallet (${splitWalletAmount}) + Razorpay (${splitRazorpayAmount}) must equal order total: ${currency}${totalAmount}`);
+        return;
+      }
+
+      if (splitWalletAmount > walletTotalAmount) {
+        alert(`Insufficient wallet balance for split portion. Available: ${currency}${walletTotalAmount}`);
+        return;
+      }
+
+      // If no razorpay portion, place wallet-only split order
+      if (splitRazorpayAmount === 0) {
+        setLoading(true);
+        try {
+          const splitPayments: SplitPaymentEntry[] = [
+            { method: 'wallet', amount: splitWalletAmount },
+          ];
+          await placePurchaseOrder('', '', '', 'split', splitPayments);
+        } catch (err) {
+          alert(`Payment failed: ${(err as Error).message}`);
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
+      // Razorpay portion > 0: create razorpay order for the razorpay portion
+      if (!window.Razorpay || !razorpayLoaded) {
+        alert('Razorpay loading... Please wait');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const order = await createRazorpayOrder(splitRazorpayAmount, cartItems);
+        setSplitRazorpayOrderData(order);
+      } catch (error) {
+        alert(`Error: ${(error as Error).message}`);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleSplitRazorpayCheckout = async () => {
+    if (!splitRazorpayOrderData) return;
+
     if (!window.Razorpay || !razorpayLoaded) {
       alert('Razorpay loading... Please wait');
       return;
     }
 
-    setLoading(true);
-    try {
-      const order = await createRazorpayOrder(totalAmount, cartItems);
+    const options = {
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_Sfdk41BOifNjN9',
+      amount: splitRazorpayOrderData.amount,
+      currency: splitRazorpayOrderData.currency,
+      name: 'Feel Safe Shop',
+      description: `Split Payment - Razorpay Portion ₹${splitRazorpayAmount.toLocaleString()}`,
+      order_id: splitRazorpayOrderData.id,
+      prefill: {
+        name: formData.full_name,
+        email: formData.email,
+        contact: formData.phone,
+      },
+      theme: { color: '#3399cc' },
+      handler: async (response: RazorpayPaymentResponse) => {
+        try {
+          await verifyPayment({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+          });
 
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_Sfdk41BOifNjN9',
-        amount: order.amount,
-        currency: order.currency,
-        name: 'Feel Safe Shop',
-        description: `Order Total ₹${totalAmount.toLocaleString()}`,
-        order_id: order.id,
-        prefill: {
-          name: formData.full_name,
-          email: formData.email,
-          contact: formData.phone,
-        },
-        theme: { color: '#3399cc' },
-        handler: async (response: {
-          razorpay_order_id: string;
-          razorpay_payment_id: string;
-          razorpay_signature: string;
-        }) => {
-          try {
-            await verifyPayment({
+          const splitPayments: SplitPaymentEntry[] = [
+            { method: 'wallet', amount: splitWalletAmount },
+            {
+              method: 'razorpay',
+              amount: splitRazorpayAmount,
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
-            });
-            await placePurchaseOrder(
-              response.razorpay_payment_id,
-              response.razorpay_order_id,
-              response.razorpay_signature,
-              'razorpay',
-            );
-          } catch (err) {
-            alert(`Payment failed: ${(err as Error).message}`);
-            router.push('/cart');
-          }
-        },
-      };
+            },
+          ];
 
-      const paymentObject = new window.Razorpay(options);
-      paymentObject.open();
-    } catch (error) {
-      hideLoader();
-      alert(`Error: ${(error as Error).message}`);
-    } finally {
-      hideLoader();
-      setLoading(false);
-    }
+          await placePurchaseOrder('', '', '', 'split', splitPayments);
+        } catch (err) {
+          alert(`Payment failed: ${(err as Error).message}`);
+          router.push('/cart');
+        }
+      },
+    };
+
+    const paymentObject = new window.Razorpay(options);
+    paymentObject.open();
   };
 
   return (
@@ -576,17 +712,25 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                 <Label className="block font-semibold mb-2">Payment Method</Label>
                 <RadioGroup
                   value={paymentMethod}
-                  onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
+                  onValueChange={(value) => {
+                    const val = value as PaymentMethod;
+                    setPaymentMethod(val);
+                    if (val !== 'split') {
+                      setSplitWalletAmount(0);
+                      setSplitRazorpayAmount(0);
+                      setSplitRazorpayOrderData(null);
+                    }
+                  }}
                   className="space-y-2"
                 >
                   <div
-                    className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer ${paymentMethod === 'online' ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white'
+                    className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer ${paymentMethod === 'razorpay' ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white'
                       }`}
-                    onClick={() => setPaymentMethod('online')}
+                    onClick={() => setPaymentMethod('razorpay')}
                   >
-                    <RadioGroupItem value="online" id="pay-online" className="h-5 w-5" name="paymentMethod" checked={paymentMethod === "online"} />
-                    <Label htmlFor="pay-online" className="cursor-pointer">
-                      Online (Razorpay)
+                    <RadioGroupItem value="razorpay" id="pay-razorpay" className="h-5 w-5" name="paymentMethod" checked={paymentMethod === "razorpay"} />
+                    <Label htmlFor="pay-razorpay" className="cursor-pointer">
+                      Pay with Razorpay
                     </Label>
                   </div>
 
@@ -597,11 +741,92 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                   >
                     <RadioGroupItem value="wallet" id="pay-wallet" className="h-5 w-5" name="paymentMethod" checked={paymentMethod === "wallet"} />
                     <Label htmlFor="pay-wallet" className="cursor-pointer">
-                      Wallet ({currency}{walletTotalAmount})
+                      Pay with Wallet ({currency}{walletTotalAmount})
                     </Label>
                   </div>
+
+                  {totalAmount > walletTotalAmount &&
+                    <div
+                      className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer ${paymentMethod === 'split' ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white'
+                        }`}
+                      onClick={() => setPaymentMethod('split')}
+                    >
+                      <RadioGroupItem value="split" id="pay-split" className="h-5 w-5" name="paymentMethod" checked={paymentMethod === "split"} />
+                      <Label htmlFor="pay-split" className="cursor-pointer">
+                        Split Payment
+                      </Label>
+                    </div>
+                  }
                 </RadioGroup>
               </div>
+
+              {/* Split Payment Amount Inputs */}
+              {paymentMethod === 'split' && (
+                <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                  <Label className="block font-semibold mb-2">Split Payment Amounts</Label>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Total Order: {currency}{formattedAmountCommas(totalAmount)} |
+                    Wallet Balance: {currency}{formattedAmountCommas(walletTotalAmount)}
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="split-wallet-amount">Wallet Portion</Label>
+                      <Input
+                        id="split-wallet-amount"
+                        type="number"
+                        min="0"
+                        max={String(Math.min(walletTotalAmount, totalAmount))}
+                        value={splitWalletAmount || ''}
+                        onChange={(e) => setSplitWalletAmount(Number(e.target.value) || 0)}
+                        disabled={walletLoading}
+                      />
+                      {splitWalletAmount > walletTotalAmount && (
+                        <p className="text-xs text-red-500 mt-1">
+                          Exceeds wallet balance ({currency}{formattedAmountCommas(walletTotalAmount)})
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="split-razorpay-amount">Razorpay Portion</Label>
+                      <Input
+                        id="split-razorpay-amount"
+                        type="number"
+                        min="0"
+                        max={String(totalAmount)}
+                        value={splitRazorpayAmount || ''}
+                        onChange={(e) => setSplitRazorpayAmount(Number(e.target.value) || 0)}
+                      />
+                    </div>
+                  </div>
+
+                  {splitRazorpayOrderData && (
+                    <p className="text-xs text-green-600 mt-2">
+                      Razorpay order created. Click the button below to complete the Razorpay payment.
+                    </p>
+                  )}
+
+                  {(splitWalletAmount + splitRazorpayAmount !== totalAmount) && (
+                    <p className="text-xs text-red-500 mt-2">
+                      Amounts must sum to {currency}{formattedAmountCommas(totalAmount)}
+                      (current: {currency}{formattedAmountCommas(splitWalletAmount + splitRazorpayAmount)})
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Split: Pay with Razorpay button (second step after creating order) */}
+              {paymentMethod === 'split' && splitRazorpayOrderData && (
+                <Button
+                  className="w-full mt-3"
+                  disabled={loading || !window.Razorpay || !razorpayLoaded}
+                  onClick={() => handleSplitRazorpayCheckout()}
+                >
+                  {loading
+                    ? 'Processing...'
+                    : `Pay ${currency}${formattedAmountCommas(splitRazorpayAmount)} with Razorpay`}
+                </Button>
+              )}
 
               <Button
                 className="w-full mt-3"
@@ -611,15 +836,29 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                   !selectedShippingId ||
                   isBelowMinLimit ||
                   (paymentMethod === 'wallet' && (walletLoading || walletTotalAmount < totalAmount)) ||
-                  (paymentMethod === 'online' && (!window.Razorpay || !razorpayLoaded))
+                  (paymentMethod === 'razorpay' && (!window.Razorpay || !razorpayLoaded)) ||
+                  (paymentMethod === 'split' && !!splitRazorpayOrderData) ||
+                  (paymentMethod === 'split' &&
+                    (!razorpayLoaded ||
+                      (splitWalletAmount + splitRazorpayAmount !== totalAmount) ||
+                      splitWalletAmount > walletTotalAmount ||
+                      (splitRazorpayAmount > 0 && (!window.Razorpay || !razorpayLoaded))))
                 }
-                onClick={() => handlePayment()}
+                onClick={() => {
+                  if (paymentMethod === 'split' && splitRazorpayOrderData) {
+                    handleSplitRazorpayCheckout();
+                  } else {
+                    handlePayment();
+                  }
+                }}
               >
                 {loading
                   ? 'Processing...'
                   : paymentMethod === 'wallet'
                     ? `Pay ${currency}${formattedAmountCommas(totalAmount)} with Wallet`
-                    : `Pay ${currency}${formattedAmountCommas(totalAmount)} with Razorpay`}
+                    : paymentMethod === 'razorpay'
+                      ? `Pay ${currency}${formattedAmountCommas(totalAmount)} with Razorpay`
+                      : `Pay ${currency}${formattedAmountCommas(totalAmount)} with Split (${currency}${splitWalletAmount} Wallet + ${currency}${splitRazorpayAmount} Razorpay)`}
               </Button>
 
 

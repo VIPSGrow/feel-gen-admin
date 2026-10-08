@@ -10,12 +10,6 @@ import { ShoppingCart } from 'lucide-react';
 import { useSetting } from '@/context/SettingContext';
 import AppHeaderLogout from '@/layout/AppHeaderLogout';
 
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
-
 const CheckoutPage = () => {
   const router = useRouter();
   const { user, logout } = useAuth();

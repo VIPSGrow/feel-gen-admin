@@ -6,7 +6,7 @@ import React, { createContext, useContext, useState, ReactNode } from "react";
 interface PreloaderContextType {
     isLoading: boolean;
     setIsLoading: (loading: boolean) => void;
-    showLoader: () => void;
+    showLoader: (text?: string) => void;
     hideLoader: () => void;
 }
 
@@ -29,8 +29,8 @@ export function PreloaderProvider({ children }: PreloaderProviderProps) {
     const [text, setText] = useState<string>("");
 
     // Helper functions for better DX (Developer Experience)
-    const showLoader = (text: string) => {
-        setText(text)
+    const showLoader = (text?: string) => {
+        setText(text || "")
         setIsLoading(true)
     };
     const hideLoader = () => setIsLoading(false);
