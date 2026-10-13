@@ -68,6 +68,11 @@ const MembersPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Filter states
+  const [isActiveFilter, setIsActiveFilter] = useState<string>(""); // "true", "false", or ""
+  const [kycStatusFilter, setKycStatusFilter] = useState<string>(""); // "pending", "approved", "rejected", or ""
+  const [statusFilter, setStatusFilter] = useState<string>(""); // "active", "pending", "inactive", or ""
+
   const { isOpen: isModalOpen, openModal, closeModal } = useModal();
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -100,7 +105,15 @@ const MembersPage = () => {
     const fetchMembers = async () => {
       try {
         setLoading(true);
-        const res = await serverCallFuction("GET", "api/users/downline");
+        const params = new URLSearchParams();
+        if (isActiveFilter) params.append("is_active", isActiveFilter);
+        if (kycStatusFilter) params.append("kyc_status", kycStatusFilter);
+        if (statusFilter) params.append("status", statusFilter);
+        
+        const queryString = params.toString();
+        const endpoint = `api/users/downline${queryString ? `?${queryString}` : ""}`;
+        
+        const res = await serverCallFuction("GET", endpoint);
         if (res && res.status !== false) {
           setMembers(res.data || []);
         } else {
@@ -114,7 +127,7 @@ const MembersPage = () => {
     };
 
     fetchMembers();
-  }, []);
+  }, [isActiveFilter, kycStatusFilter, statusFilter]);
 
   // Filter members
   useEffect(() => {
@@ -204,7 +217,7 @@ const MembersPage = () => {
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
-          <div className="relative flex-1">
+          <div className="relative flex-1 sm:flex-initial w-full sm:w-64">
             <Input
               type="text"
               placeholder="Search members by name or email..."
@@ -213,6 +226,46 @@ const MembersPage = () => {
               className="pl-10"
             />
           </div>
+          
+          {/* Filter Controls */}
+          <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+            <div className="relative">
+              <select
+                value={isActiveFilter}
+                onChange={(e) => setIsActiveFilter(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white bg-white appearance-none pr-10"
+              >
+                <option value="">All Active Status</option>
+                <option value="true">Active (true)</option>
+                <option value="false">Inactive (false)</option>
+              </select>
+            </div>
+            {/* <div className="relative">
+              <select
+                value={kycStatusFilter}
+                onChange={(e) => setKycStatusFilter(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white bg-white appearance-none pr-10"
+              >
+                <option value="">All KYC Status</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div> */}
+            {/* <div className="relative">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white bg-white appearance-none pr-10"
+              >
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="pending">Pending</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div> */}
+          </div>
+          
           {isSuperAdmin && (
             <Button onClick={openAdd} className="gap-2">
               <Plus className="w-4 h-4" />

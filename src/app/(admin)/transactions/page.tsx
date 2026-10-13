@@ -18,6 +18,7 @@ import { useAuth } from '@/context/AuthContext';
 import Button from '@/components/ui/button/Button';
 import Input from '@/components/form/input/InputField';
 import AddTransactionModal from '@/components/admin/transactions/AddTransactionModal';
+import Pagination from '@/components/tables/Pagination';
 
 const TransactionsPage = () => {
   const { user } = useAuth();
@@ -42,6 +43,11 @@ const TransactionsPage = () => {
   } | null>(null);
   const [error, setError] = useState<string>('');
 
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+
   const isSuperAdmin = user?.role === 'Super Admin';
 
   const fetchTransactions = async (endpoint: string = 'api/transactions/transactions') => {
@@ -52,9 +58,15 @@ const TransactionsPage = () => {
       const res = await serverCallFuction('GET', endpoint);
       const success = (res as { success?: boolean })?.success;
       const data = (res as { data?: TransactionItem[] })?.data;
+      const pagination = (res as { pagination?: { page: number; limit: number; total: number; pages: number } })?.pagination;
 
       if (success && Array.isArray(data)) {
         setTransactions(data);
+        if (pagination) {
+          setPage(pagination.page);
+          setTotalPages(pagination.pages);
+          setTotalItems(pagination.total);
+        }
       } else {
         setError((res as { message?: string })?.message || 'Failed to load transactions');
       }
@@ -69,9 +81,15 @@ const TransactionsPage = () => {
     fetchTransactions();
   }, []);
 
-  const buildEndpointWithUserId = (baseEndpoint: string, userId: number | null) => {
-    if (!userId) return baseEndpoint;
-    return `${baseEndpoint}?page=1&limit=20&userId=${userId}`;
+  const buildEndpointWithUserId = (baseEndpoint: string, userId: number | null, currentPage?: number, currentLimit?: number) => {
+    if (!userId) {
+      const p = currentPage ?? page;
+      const l = currentLimit ?? limit;
+      return `${baseEndpoint}?page=${p}&limit=${l}`;
+    }
+    const p = currentPage ?? 1;
+    const l = currentLimit ?? limit;
+    return `${baseEndpoint}?page=${p}&limit=${l}&userId=${userId}`;
   };
 
   useEffect(() => {
@@ -113,7 +131,7 @@ const TransactionsPage = () => {
     setError('');
 
     try {
-      const endpoint = buildEndpointWithUserId('api/transactions/transactions', selectedUserId);
+      const endpoint = buildEndpointWithUserId('api/transactions/transactions', selectedUserId, 1, limit);
       const res = await serverCallFuction('GET', endpoint);
       const success = (res as { success?: boolean })?.success;
       const data = (res as { data?: TransactionItem[] })?.data;
@@ -121,6 +139,12 @@ const TransactionsPage = () => {
       if (success && Array.isArray(data)) {
         setWalletStats(res?.wallet);
         setTransactions(data);
+        setPage(1);
+        const pagination = (res as { pagination?: { page: number; limit: number; total: number; pages: number } })?.pagination;
+        if (pagination) {
+          setTotalPages(pagination.pages);
+          setTotalItems(pagination.total);
+        }
         setIsFilterOpen(false);
       } else {
         setError(
@@ -340,6 +364,23 @@ const TransactionsPage = () => {
           </div>
         </div>
       </div>
+
+      {totalPages > 1 && (
+        <div className="p-4 border-t border-gray-100 dark:border-white/[0.05] flex items-center justify-between">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, totalItems)} of {totalItems} transactions
+          </div>
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={(newPage) => {
+              setPage(newPage);
+              const endpoint = buildEndpointWithUserId('api/transactions/transactions', selectedUserId, newPage, limit);
+              fetchTransactions(endpoint);
+            }}
+          />
+        </div>
+      )}
 
       <Modal isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} className="max-w-4xl">
         <div className="p-6">

@@ -221,11 +221,11 @@ const allNavItems: NavItem[] = [
     name: "Settings",
     permission: "settings",
     subItems: [
-      {
-        name: "MLM Plan Configuration",
-        path: "/mlm-plan",
-        permission: "mlm-plan",
-      },
+      // {
+      //   name: "MLM Plan Configuration",
+      //   path: "/mlm-plan",
+      //   permission: "mlm-plan",
+      // },
       {
         name: 'Configuration',
         path: "/settings"
