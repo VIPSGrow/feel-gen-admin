@@ -3,6 +3,7 @@ export interface LevelCommission {
   type: string;
   level_name: string;
   commission_percentage: number;
+  team_size_threshold: number;
 }
 
 export interface LevelCapping{

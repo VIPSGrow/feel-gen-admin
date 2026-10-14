@@ -10,7 +10,6 @@ import { Trash2 } from "lucide-react";
 import type {
   GenerationCommission,
   MlmPlanResponse,
-  MlmRank,
   MlmReward,
   ServerResponse,
 } from "@/types/mlm-plan";
@@ -36,10 +35,9 @@ const MlmPlanSettings = () => {
   const { user, hasPermission } = useAuth();
   const isSuperAdmin = hasPermission("mlm-plan") ||
     (user?.role_name || user?.role || "").toLowerCase().includes("super admin");
-  const [tab, setTab] = useState<"settings" | "commissions" | "ranks" | "rewards">("settings");
+  const [tab, setTab] = useState<"settings" | "commissions" | "rewards">("settings");
   const [settings, setSettings] = useState<PlanSettings>(EMPTY_SETTINGS);
   const [commissions, setCommissions] = useState<GenerationCommission[]>([]);
-  const [ranks, setRanks] = useState<MlmRank[]>([]);
   const [rewards, setRewards] = useState<MlmReward[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -60,19 +58,15 @@ const MlmPlanSettings = () => {
         ...Object.fromEntries(Object.entries(rawSettings).map(([key, value]) => [key, valueOf(value)])),
       });
       setCommissions((body.commissions || body.generation_commissions || []).map((item) => ({
-        id: typeof item.id === "number" ? item.id : undefined,
+        id: item.id === undefined || item.id === null ? undefined : Number(item.id),
         level: Number(item.level ?? item.level_no),
         level_name: valueOf(item.level_name),
-        percentage: valueOf(item.percentage ?? item.commission_percentage),
-      })));
-      setRanks((body.ranks || []).map((item) => ({
-        id: Number(item.id),
-        rank_name: valueOf(item.rank_name ?? item.name),
-        milestone_threshold: valueOf(item.milestone_threshold ?? item.threshold),
-        threshold_type: valueOf(item.threshold_type),
+        percentage: valueOf(item.percentage ?? item.commission_percent ?? item.commission_percentage),
+        team_size_threshold: valueOf(item.team_size_threshold),
       })));
       setRewards((body.rewards || []).map((item) => ({
         id: typeof item.id === "number" ? item.id : undefined,
+        generation_commission_id: valueOf(item.generation_commission_id),
         reward_type: valueOf(item.reward_type),
         reward_value: valueOf(item.reward_value),
         reward_description: valueOf(item.reward_description ?? item.description),
@@ -129,11 +123,14 @@ const MlmPlanSettings = () => {
     const percentageError = validateNumber(commission.percentage, `Generation ${commission.level}`, true);
     if (percentageError) return notify("error", percentageError);
     if (!commission.level_name.trim()) return notify("error", `Generation ${commission.level} name is required`);
+    const teamSizeThreshold = Number(commission.team_size_threshold);
+    if (!Number.isInteger(teamSizeThreshold) || teamSizeThreshold < 0) return notify("error", "Team size threshold must be a non-negative whole number");
     setSaving(true);
     try {
       const response = await serverCallFuction("PUT", `api/settings/mlm-plan/commissions/${commission.level}`, {
         level_name: commission.level_name,
         percentage: Number(commission.percentage),
+        team_size_threshold: teamSizeThreshold,
       });
       if (!isSuccessful(response)) throw new Error(response.message || "Unable to save generation commission");
       notify("success", `Generation ${commission.level} commission saved.`);
@@ -145,34 +142,15 @@ const MlmPlanSettings = () => {
     }
   };
 
-  const saveRank = async (rank: MlmRank) => {
-    const thresholdError = validateNumber(rank.milestone_threshold, "Milestone threshold");
-    if (thresholdError) return notify("error", thresholdError);
-    if (!rank.rank_name.trim() || !rank.threshold_type.trim()) return notify("error", "Rank name and threshold type are required");
-    setSaving(true);
-    try {
-      const response = await serverCallFuction("PUT", `api/settings/mlm-plan/ranks/${rank.id}`, {
-        rank_name: rank.rank_name,
-        milestone_threshold: Number(rank.milestone_threshold),
-        threshold_type: rank.threshold_type,
-      });
-      if (!isSuccessful(response)) throw new Error(response.message || "Unable to save rank");
-      notify("success", "Rank saved successfully.");
-      await loadPlan();
-    } catch (error) {
-      notify("error", error instanceof Error ? error.message : "Unable to save rank");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const saveReward = async (reward: MlmReward) => {
     const valueError = validateNumber(reward.reward_value, "Reward value");
     if (valueError) return notify("error", valueError);
+    if (!reward.id && !reward.generation_commission_id) return notify("error", "A generation level is required for a new reward");
     if (!reward.reward_type.trim() || !reward.reward_description.trim()) return notify("error", "Reward type and description are required");
     setSaving(true);
     try {
       const response = await serverCallFuction(reward.id ? "PUT" : "POST", reward.id ? `api/settings/mlm-plan/rewards/${reward.id}` : "api/settings/mlm-plan/rewards", {
+        ...(!reward.id ? { generation_commission_id: Number(reward.generation_commission_id) } : {}),
         reward_type: reward.reward_type,
         reward_value: Number(reward.reward_value),
         reward_description: reward.reward_description,
@@ -207,12 +185,16 @@ const MlmPlanSettings = () => {
   if (loading) return <div className="p-6 text-center text-gray-500">Loading MLM plan configuration...</div>;
 
   const updateSettings = (key: keyof PlanSettings, value: string) => setSettings((current) => ({ ...current, [key]: value }));
-  const updateCommission = (level: number, key: "level_name" | "percentage", value: string) => setCommissions((current) => {
+  const updateCommission = (level: number, key: "level_name" | "percentage" | "team_size_threshold", value: string) => setCommissions((current) => {
     const existing = current.find((item) => item.level === level);
     if (existing) return current.map((item) => item.level === level ? { ...item, [key]: value } : item);
-    return [...current, { level, level_name: key === "level_name" ? value : "", percentage: key === "percentage" ? value : "" }].sort((left, right) => left.level - right.level);
+    return [...current, {
+      level,
+      level_name: key === "level_name" ? value : "",
+      percentage: key === "percentage" ? value : "",
+      team_size_threshold: key === "team_size_threshold" ? value : "0",
+    }].sort((left, right) => left.level - right.level);
   });
-  const updateRank = (id: number, key: keyof MlmRank, value: string) => setRanks((current) => current.map((item) => item.id === id ? { ...item, [key]: value } : item));
   const updateReward = (index: number, key: keyof MlmReward, value: string) => setRewards((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item));
 
   return (
@@ -224,7 +206,7 @@ const MlmPlanSettings = () => {
       {message && <div className={`rounded-lg border p-4 text-sm ${message.type === "success" ? "border-success-200 bg-success-50 text-success-700" : "border-error-200 bg-error-50 text-error-700"}`}>{message.text}</div>}
 
       <div className="flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-800">
-        {(["settings", "commissions", "ranks", "rewards"] as const).map((item) => (
+        {(["settings", "commissions", "rewards"] as const).map((item) => (
           <button key={item} type="button" onClick={() => setTab(item)} className={`border-b-2 px-4 py-3 text-sm font-medium capitalize ${tab === item ? "border-brand-500 text-brand-600" : "border-transparent text-gray-500"}`}>{item === "settings" ? "Plan Settings" : item === "commissions" ? "Generation Commissions" : item}</button>
         ))}
       </div>
@@ -235,11 +217,9 @@ const MlmPlanSettings = () => {
         ))}
       </div><div className="mt-5"><Button onClick={saveSettings} disabled={saving}>{saving ? "Saving..." : "Save Plan Settings"}</Button></div></section>}
 
-      {tab === "commissions" && <section className="space-y-3">{LEVELS.map((level) => { const commission = commissions.find((item) => item.level === level) || { level, level_name: "", percentage: "" }; return <div key={level} className="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 md:grid-cols-[120px_1fr_180px_auto] md:items-end"><div><Label>Level</Label><p className="h-11 pt-3 font-semibold text-gray-900 dark:text-white">Generation {level}</p></div><div><Label>Level Name</Label><input className={inputClass} value={commission.level_name} onChange={(event) => updateCommission(level, "level_name", event.target.value)} /></div><div><Label>Percentage</Label><input className={inputClass} type="number" min="0" max="100" value={commission.percentage} onChange={(event) => updateCommission(level, "percentage", event.target.value)} /></div><Button onClick={() => saveCommission(commission)} disabled={saving}>Save</Button></div>})}</section>}
+      {tab === "commissions" && <section className="space-y-3">{LEVELS.map((level) => { const commission = commissions.find((item) => item.level === level) || { level, level_name: "", percentage: "", team_size_threshold: "0" }; return <div key={level} className="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 md:grid-cols-[120px_1fr_150px_180px_auto] md:items-end"><div><Label>Level</Label><p className="h-11 pt-3 font-semibold text-gray-900 dark:text-white">Generation {level}</p></div><div><Label>Rank Name</Label><input className={inputClass} value={commission.level_name} onChange={(event) => updateCommission(level, "level_name", event.target.value)} /></div><div><Label>Commission %</Label><input className={inputClass} type="number" min="0" max="100" value={commission.percentage} onChange={(event) => updateCommission(level, "percentage", event.target.value)} /></div><div><Label>Team Size Threshold</Label><input className={inputClass} type="number" min="0" step="1" value={commission.team_size_threshold} onChange={(event) => updateCommission(level, "team_size_threshold", event.target.value)} /></div><Button onClick={() => saveCommission(commission)} disabled={saving}>Save</Button></div>})}</section>}
 
-      {tab === "ranks" && <section className="space-y-3">{ranks.length === 0 ? <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500">No ranks returned by the API.</div> : ranks.map((rank) => <div key={rank.id} className="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 md:grid-cols-[1fr_180px_180px_auto] md:items-end"><div><Label>Rank Name</Label><input className={inputClass} value={rank.rank_name} onChange={(event) => updateRank(rank.id, "rank_name", event.target.value)} /></div><div><Label>Milestone Threshold</Label><input className={inputClass} type="number" min="0" value={rank.milestone_threshold} onChange={(event) => updateRank(rank.id, "milestone_threshold", event.target.value)} /></div><div><Label>Threshold Type</Label><input className={inputClass} value={rank.threshold_type} onChange={(event) => updateRank(rank.id, "threshold_type", event.target.value)} /></div><Button onClick={() => saveRank(rank)} disabled={saving}>Save</Button></div>)}</section>}
-
-      {tab === "rewards" && <section className="space-y-3"><div className="flex justify-end"><Button onClick={() => setRewards((current) => [...current, { reward_type: "", reward_value: "", reward_description: "" }])}>Add Reward</Button></div>{rewards.length === 0 ? <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500">No rewards returned by the API.</div> : rewards.map((reward, index) => <div key={reward.id ?? `new-${index}`} className="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 md:grid-cols-[180px_160px_1fr_auto] md:items-end"><div><Label>Reward Type</Label><input className={inputClass} value={reward.reward_type} onChange={(event) => updateReward(index, "reward_type", event.target.value)} /></div><div><Label>Reward Value</Label><input className={inputClass} type="number" min="0" value={reward.reward_value} onChange={(event) => updateReward(index, "reward_value", event.target.value)} /></div><div><Label>Reward Description</Label><textarea className={`${inputClass} h-20 py-2`} value={reward.reward_description} onChange={(event) => updateReward(index, "reward_description", event.target.value)} /></div><div className="flex flex-col gap-2"><Button onClick={() => saveReward(reward)} disabled={saving}>Save</Button>{reward.id && <Button variant="ghost" onClick={() => deleteReward(reward)} disabled={saving} startIcon={<Trash2 className="w-4 h-4" />}>Delete</Button>}</div></div>)}</section>}
+      {tab === "rewards" && <section className="space-y-3"><div className="flex justify-end"><Button onClick={() => setRewards((current) => [...current, { generation_commission_id: "", reward_type: "", reward_value: "", reward_description: "" }])}>Add Reward</Button></div>{rewards.length === 0 ? <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500">No rewards returned by the API.</div> : rewards.map((reward, index) => <div key={reward.id ?? `new-${index}`} className="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 md:grid-cols-[200px_180px_140px_1fr_auto] md:items-end"><div><Label>Rank / Generation Level</Label><select className={inputClass} value={reward.generation_commission_id} disabled={Boolean(reward.id)} onChange={(event) => updateReward(index, "generation_commission_id", event.target.value)}><option value="" disabled>Select level</option>{commissions.map((commission) => <option key={commission.id ?? commission.level} value={String(commission.id ?? "")}>{`(${commission.level}) ${commission.level_name}`}</option>)}</select></div><div><Label>Reward Type</Label><input className={inputClass} value={reward.reward_type} onChange={(event) => updateReward(index, "reward_type", event.target.value)} /></div><div><Label>Reward Value</Label><input className={inputClass} type="number" min="0" value={reward.reward_value} onChange={(event) => updateReward(index, "reward_value", event.target.value)} /></div><div><Label>Reward Description</Label><textarea className={`${inputClass} h-20 py-2`} value={reward.reward_description} onChange={(event) => updateReward(index, "reward_description", event.target.value)} /></div><div className="flex flex-col gap-2"><Button onClick={() => saveReward(reward)} disabled={saving}>Save</Button>{reward.id && <Button variant="ghost" onClick={() => deleteReward(reward)} disabled={saving} startIcon={<Trash2 className="w-4 h-4" />}>Delete</Button>}</div></div>)}</section>}
     </div>
   );
 };

@@ -21,7 +21,7 @@ import serverCallFuction from "@/lib/constantFunction";
 
 interface Reward {
   id: number;
-  rank_id: number;
+  generation_commission_id: number;
   rank_no: number;
   rank_name: string;
   reward_type: string;
@@ -37,14 +37,14 @@ interface Rank {
 }
 
 interface FormData {
-  rank_id: string;
+  generation_commission_id: string;
   reward_type: string;
   reward_value: string;
   reward_description: string;
 }
 
 const EMPTY_FORM: FormData = {
-  rank_id: "",
+  generation_commission_id: "",
   reward_type: "cash",
   reward_value: "",
   reward_description: "",
@@ -86,13 +86,13 @@ export default function MlmRewards() {
       const response = await serverCallFuction<{
         success?: boolean;
         status?: boolean;
-        data?: { ranks?: Array<Record<string, unknown>> };
+        data?: { commissions?: Array<Record<string, unknown>> };
       }>("GET", "api/settings/mlm-plan");
       if (!isSuccessful(response)) return;
-      setRanks((response.data?.ranks || []).map((rank) => ({
+      setRanks((response.data?.commissions || []).map((rank) => ({
         id: Number(rank.id),
-        rank_name: String(rank.rank_name ?? rank.name ?? ""),
-        rank_no: rank.rank_no ? Number(rank.rank_no) : undefined,
+        rank_name: String(rank.level_name ?? rank.name ?? ""),
+        rank_no: rank.level_no !== undefined ? Number(rank.level_no) : undefined,
       })));
     } catch {
       // The reward list remains usable when rank loading fails.
@@ -117,7 +117,7 @@ export default function MlmRewards() {
   const openEdit = (reward: Reward) => {
     setCurrentReward(reward);
     setFormData({
-      rank_id: String(reward.rank_id),
+      generation_commission_id: String(reward.generation_commission_id),
       reward_type: reward.reward_type,
       reward_value: reward.reward_value,
       reward_description: reward.reward_description,
@@ -126,8 +126,8 @@ export default function MlmRewards() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.rank_id || !formData.reward_type.trim() || !formData.reward_value || !formData.reward_description.trim()) {
-      setError("Rank, reward type, value, and description are required.");
+    if (!formData.generation_commission_id || !formData.reward_type.trim() || !formData.reward_value || !formData.reward_description.trim()) {
+      setError("Generation level, reward type, value, and description are required.");
       return;
     }
 
@@ -138,7 +138,7 @@ export default function MlmRewards() {
         ? `api/settings/mlm-plan/rewards/${currentReward.id}`
         : "api/settings/mlm-plan/rewards";
       const body = {
-        ...(currentReward ? {} : { rank_id: Number(formData.rank_id) }),
+        generation_commission_id: Number(formData.generation_commission_id),
         reward_type: formData.reward_type.trim(),
         reward_value: Number(formData.reward_value),
         reward_description: formData.reward_description.trim(),
@@ -220,7 +220,7 @@ export default function MlmRewards() {
       <Modal isOpen={isOpen} onClose={() => { closeModal(); resetForm(); }} className="w-xl">
         <div className="space-y-5 p-6">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{currentReward ? "Edit Reward" : "New Reward"}</h2>
-          <div><Label>Rank</Label><select value={formData.rank_id} onChange={(event) => setFormData((current) => ({ ...current, rank_id: event.target.value }))} className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="" disabled>Select a rank</option>{ranks.map((rank) => <option key={rank.id} value={rank.id}>{rank.rank_no ? `(${rank.rank_no}) ${rank.rank_name}` : rank.rank_name}</option>)}</select></div>
+          <div><Label>Rank / Generation Level</Label><select value={formData.generation_commission_id} onChange={(event) => setFormData((current) => ({ ...current, generation_commission_id: event.target.value }))} className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="" disabled>Select a level</option>{ranks.map((rank) => <option key={rank.id} value={rank.id}>({rank.rank_no ?? 0}) {rank.rank_name}</option>)}</select></div>
           <div><Label>Reward Type</Label><Input value={formData.reward_type} onChange={(event) => setFormData((current) => ({ ...current, reward_type: event.target.value }))} placeholder="cash" /></div>
           <div><Label>Reward Value</Label><Input type="number" min="0" value={formData.reward_value} onChange={(event) => setFormData((current) => ({ ...current, reward_value: event.target.value }))} /></div>
           <div><Label>Reward Description</Label><TextArea value={formData.reward_description} onChange={(value) => setFormData((current) => ({ ...current, reward_description: value }))} rows={4} /></div>

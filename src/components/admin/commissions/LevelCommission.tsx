@@ -36,7 +36,8 @@ const LevelCommissionComponent = () => {
     level_no: '',
     type: '',
     level_name: '',
-    commission_percentage: ''
+    commission_percentage: '',
+    team_size_threshold: 0,
   });
 
   const fetchCommissions = useCallback(async () => {
@@ -65,7 +66,8 @@ const LevelCommissionComponent = () => {
       level_no: '',
       type: '',
       level_name: '',
-      commission_percentage: ''
+      commission_percentage: '',
+      team_size_threshold: 0,
     });
     setEditMode(false);
     setCurrentItem(null);
@@ -83,7 +85,8 @@ const LevelCommissionComponent = () => {
       level_no: item.level_no.toString(),
       type: item.type,
       level_name: item.level_name,
-      commission_percentage: item.commission_percentage.toString()
+      commission_percentage: item.commission_percentage.toString(),
+      team_size_threshold: item.team_size_threshold,
     });
     openModal();
   };
@@ -158,6 +161,7 @@ const LevelCommissionComponent = () => {
                 <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Type</TableCell>
                 <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Level Name</TableCell>
                 <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Commission %</TableCell>
+                <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Team Size Threshold</TableCell>
                 {hasPermission('commissions/add') &&
                   <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-right">Actions</TableCell>}
               </TableRow>
@@ -173,6 +177,7 @@ const LevelCommissionComponent = () => {
                   </TableCell>
                   <TableCell className="px-6 py-4 font-semibold text-gray-900 dark:text-white">{commission.level_name}</TableCell>
                   <TableCell className="px-6 py-4 font-semibold text-emerald-600">{commission.commission_percentage}%</TableCell>
+                  <TableCell className="px-6 py-4 font-semibold text-emerald-600">{commission.team_size_threshold ?? "-"}</TableCell>
                   {hasPermission('commissions/add') &&
                     <TableCell className="px-6 py-4 text-right">
                       <div className="flex gap-2 justify-end">
@@ -253,6 +258,20 @@ const LevelCommissionComponent = () => {
                 onChange={(e) => setFormData({ ...formData, commission_percentage: e.target.value })}
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Team Size Threshold</label>
+              <Input
+                type="number"
+                step="1"
+                min="0"
+                placeholder="e.g. 10"
+                defaultValue={formData.team_size_threshold}
+                onChange={(e) => setFormData({ ...formData, team_size_threshold: e.target.value })}
+              />
+            </div>
+
+
           </div>
           <div className="flex gap-3 pt-4">
             <Button variant="outline" onClick={() => {

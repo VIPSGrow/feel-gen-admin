@@ -25,21 +25,10 @@ import { useWallet } from '@/context/WalletContext';
 
 type PaymentMethod = 'razorpay' | 'wallet' | 'split';
 
-interface Coupon {
-  id: string;
+const roundCurrencyAmount = (amount: number) => Math.round((amount + Number.EPSILON) * 100) / 100;
+
+interface AppliedCoupon {
   code: string;
-  discount_type: 'percentage' | 'fixed';
-  discount_amount: number;
-  min_order_amount?: number;
-  max_discount_amount?: number;
-  usage_limit?: number;
-  valid_from: string;
-  expires_at: string;
-  applicable_products?: string[];
-  product_names?: string[];
-  applicable_users?: string[];
-  status: 'active' | 'inactive';
-  created_at?: string;
 }
 
 
@@ -63,7 +52,7 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
 
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
   const [couponDiscount, setCouponDiscount] = useState<number>(0);
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [couponError, setCouponError] = useState('');
@@ -271,7 +260,18 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
   const currency = getCurrencyIcon('INR');
 
   // Calculate the effective total after coupon discount
-  const effectiveTotalAmount = Math.max(0, totalAmount - couponDiscount);
+  const effectiveTotalAmount = roundCurrencyAmount(Math.max(0, totalAmount - couponDiscount));
+  const isFreeOrder = effectiveTotalAmount === 0;
+  const maxSplitWalletAmount =
+    Math.floor(Math.min(walletTotalAmount, effectiveTotalAmount) * 100 + Number.EPSILON) / 100;
+  const selectSplitPayment = () => {
+    const walletAmount = maxSplitWalletAmount;
+    const razorpayAmount = roundCurrencyAmount(effectiveTotalAmount - walletAmount);
+    setPaymentMethod('split');
+    setSplitRazorpayAmount(razorpayAmount);
+    setSplitWalletAmount(walletAmount);
+    setSplitRazorpayOrderData(null);
+  };
 
   const validateAndApplyCoupon = async () => {
     if (!couponCode.trim()) {
@@ -285,7 +285,7 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
     try {
       const res = await serverCallFuction('POST', 'api/coupons/validate', {
         code: couponCode.trim().toUpperCase(),
-        cart_total: totalAmount,
+        total_amount: totalAmount,
         user_id: (user as any).id || (user as any).user_id,
         cart_items: cartItems.map((item) => ({
           product_id: item.product_id,
@@ -293,19 +293,37 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
         })),
       });
 
-      if (!res.status || !res.success) {
+      if (res.status !== true && res.success !== true) {
         setCouponError(res.message || 'Invalid or expired coupon');
         setAppliedCoupon(null);
         setCouponDiscount(0);
         return;
       }
 
-      const coupon: Coupon = res.data.coupon;
-      const discountAmount: number = res.data.discount_amount || 0;
+      const responseData = res.data as {
+        code?: string;
+        discount_amount?: number | string;
+        coupon?: { code?: string; discount_amount?: number | string };
+      } | null;
+      const couponCodeFromResponse =
+        responseData?.coupon?.code || responseData?.code || couponCode.trim();
+      const discountAmount = Number(
+        responseData?.discount_amount ?? responseData?.coupon?.discount_amount,
+      );
 
+      if (!couponCodeFromResponse || !Number.isFinite(discountAmount) || discountAmount < 0) {
+        setCouponError('Coupon validation returned invalid coupon details');
+        setAppliedCoupon(null);
+        setCouponDiscount(0);
+        return;
+      }
+
+      const coupon: AppliedCoupon = { code: couponCodeFromResponse.toUpperCase() };
+      const appliedDiscount = Math.min(discountAmount, Math.max(0, totalAmount));
+      setCouponCode(coupon.code);
       setAppliedCoupon(coupon);
-      setCouponDiscount(discountAmount);
-      alert(`Coupon applied! Discount: ${currency}${formattedAmountCommas(discountAmount)}`);
+      setCouponDiscount(appliedDiscount);
+      alert(`Coupon applied! Discount: ${currency}${formattedAmountCommas(appliedDiscount)}`);
     } catch (error) {
       setCouponError('Failed to validate coupon. Please try again.');
       setAppliedCoupon(null);
@@ -401,7 +419,7 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
     razorpayPaymentId: string,
     razorpayOrderId: string,
     razorpaySignature: string,
-    method: PaymentMethod,
+    method: PaymentMethod | null,
     splitPayments?: SplitPaymentEntry[],
   ) => {
     try {
@@ -427,10 +445,11 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
       // Include coupon if applied
       if (appliedCoupon) {
         payload.coupon_code = appliedCoupon.code;
-        payload.coupon_discount = couponDiscount;
       }
 
-      if (method === 'split' && splitPayments) {
+      if (method === null) {
+        // A fully discounted order has no payment transaction or payment method.
+      } else if (method === 'split' && splitPayments) {
         payload.payment_method = 'split';
         payload.payments = splitPayments;
       } else if (method === 'wallet') {
@@ -447,7 +466,7 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
       if (res.success || res.status) {
         const responseData = (res.data || res) as OrderPlacementResponseData;
         const paymentStatus = responseData?.payment_status || 'paid';
-        const paidAmount = responseData?.paid_amount ?? totalAmount;
+        const paidAmount = responseData?.paid_amount ?? (method === null ? 0 : totalAmount);
         const orderId = responseData?.order_id || '';
 
         await serverCallFuction('DELETE', 'api/ecom/cart/d_clear');
@@ -484,6 +503,18 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
 
     if (!selectedAddress) {
       alert('Please select a shipping address or add one in profile');
+      return;
+    }
+
+    if (isFreeOrder) {
+      setLoading(true);
+      try {
+        await placePurchaseOrder('', '', '', null);
+      } catch (err) {
+        alert(`Order placement failed: ${(err as Error).message}`);
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
@@ -576,7 +607,7 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
         return;
       }
 
-      const sum = splitWalletAmount + splitRazorpayAmount;
+      const sum = roundCurrencyAmount(splitWalletAmount + splitRazorpayAmount);
       if (sum !== effectiveTotalAmount) {
         alert(`Wallet (${splitWalletAmount}) + Razorpay (${splitRazorpayAmount}) must equal order total: ${currency}${effectiveTotalAmount}`);
         return;
@@ -848,14 +879,16 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
               </div>
 
               {/* Payment Method */}
-              <div className="mt-4">
+              {!isFreeOrder && <div className="mt-4">
                 <Label className="block font-semibold mb-2">Payment Method</Label>
                 <RadioGroup
                   value={paymentMethod}
                   onValueChange={(value) => {
                     const val = value as PaymentMethod;
-                    setPaymentMethod(val);
-                    if (val !== 'split') {
+                    if (val === 'split') {
+                      selectSplitPayment();
+                    } else {
+                      setPaymentMethod(val);
                       setSplitWalletAmount(0);
                       setSplitRazorpayAmount(0);
                       setSplitRazorpayOrderData(null);
@@ -874,7 +907,7 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                     </Label>
                   </div>
 
-                  <div
+                  {/* <div
                     className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer ${paymentMethod === 'wallet' ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white'
                       }`}
                     onClick={() => setPaymentMethod('wallet')}
@@ -883,13 +916,13 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                     <Label htmlFor="pay-wallet" className="cursor-pointer">
                       Pay with Wallet ({currency}{walletTotalAmount})
                     </Label>
-                  </div>
+                  </div> */}
 
                   {totalAmount > walletTotalAmount &&
                     <div
                       className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer ${paymentMethod === 'split' ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white'
                         }`}
-                      onClick={() => setPaymentMethod('split')}
+                      onClick={selectSplitPayment}
                     >
                       <RadioGroupItem value="split" id="pay-split" className="h-5 w-5" name="paymentMethod" checked={paymentMethod === "split"} />
                       <Label htmlFor="pay-split" className="cursor-pointer">
@@ -898,10 +931,16 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                     </div>
                   }
                 </RadioGroup>
-              </div>
+              </div>}
+
+              {isFreeOrder && (
+                <p className="mt-4 text-sm text-green-700">
+                  Your coupon covers the full order. You can place it without making a payment.
+                </p>
+              )}
 
               {/* Split Payment Amount Inputs */}
-              {paymentMethod === 'split' && (
+              {!isFreeOrder && paymentMethod === 'split' && (
                 <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
                   <Label className="block font-semibold mb-2">Split Payment Amounts</Label>
                   <p className="text-sm text-gray-600 mb-3">
@@ -916,9 +955,19 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                         id="split-wallet-amount"
                         type="number"
                         min="0"
-                        max={String(Math.min(walletTotalAmount, effectiveTotalAmount))}
+                        max={String(maxSplitWalletAmount)}
                         value={splitWalletAmount || ''}
-                        onChange={(e) => setSplitWalletAmount(Number(e.target.value) || 0)}
+                        step="0.01"
+                        onChange={(e) => {
+                          const enteredAmount = Number(e.target.value) || 0;
+                          const walletAmount = Math.min(
+                            Math.max(0, roundCurrencyAmount(enteredAmount)),
+                            maxSplitWalletAmount,
+                          );
+                          setSplitWalletAmount(walletAmount);
+                          setSplitRazorpayAmount(roundCurrencyAmount(effectiveTotalAmount - walletAmount));
+                          setSplitRazorpayOrderData(null);
+                        }}
                         disabled={walletLoading}
                       />
                       {splitWalletAmount > walletTotalAmount && (
@@ -935,7 +984,16 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                         min="0"
                         max={String(effectiveTotalAmount)}
                         value={splitRazorpayAmount || ''}
-                        onChange={(e) => setSplitRazorpayAmount(Number(e.target.value) || 0)}
+                        step="0.01"
+                        onChange={(e) => {
+                          const razorpayAmount = Math.min(
+                            Math.max(0, roundCurrencyAmount(Number(e.target.value) || 0)),
+                            effectiveTotalAmount,
+                          );
+                          setSplitRazorpayAmount(razorpayAmount);
+                          setSplitWalletAmount(roundCurrencyAmount(effectiveTotalAmount - razorpayAmount));
+                          setSplitRazorpayOrderData(null);
+                        }}
                       />
                     </div>
                   </div>
@@ -946,10 +1004,10 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                     </p>
                   )}
 
-                  {(splitWalletAmount + splitRazorpayAmount !== effectiveTotalAmount) && (
+                  {roundCurrencyAmount(splitWalletAmount + splitRazorpayAmount) !== effectiveTotalAmount && (
                     <p className="text-xs text-red-500 mt-2">
                       Amounts must sum to {currency}{formattedAmountCommas(effectiveTotalAmount)}
-                      (current: {currency}{formattedAmountCommas(splitWalletAmount + splitRazorpayAmount)})
+                      (current: {currency}{formattedAmountCommas(roundCurrencyAmount(splitWalletAmount + splitRazorpayAmount))})
                     </p>
                   )}
                 </div>
@@ -975,12 +1033,12 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                   loadingAddresses ||
                   !selectedShippingId ||
                   isBelowMinLimit ||
-                  (paymentMethod === 'wallet' && (walletLoading || walletTotalAmount < effectiveTotalAmount)) ||
-                  (paymentMethod === 'razorpay' && (!window.Razorpay || !razorpayLoaded)) ||
-                  (paymentMethod === 'split' && !!splitRazorpayOrderData) ||
-                  (paymentMethod === 'split' &&
+                  (!isFreeOrder && paymentMethod === 'wallet' && (walletLoading || walletTotalAmount < effectiveTotalAmount)) ||
+                  (!isFreeOrder && paymentMethod === 'razorpay' && (!window.Razorpay || !razorpayLoaded)) ||
+                  (!isFreeOrder && paymentMethod === 'split' && !!splitRazorpayOrderData) ||
+                  (!isFreeOrder && paymentMethod === 'split' &&
                     (!razorpayLoaded ||
-                      (splitWalletAmount + splitRazorpayAmount !== effectiveTotalAmount) ||
+                      (roundCurrencyAmount(splitWalletAmount + splitRazorpayAmount) !== effectiveTotalAmount) ||
                       splitWalletAmount > walletTotalAmount ||
                       (splitRazorpayAmount > 0 && (!window.Razorpay || !razorpayLoaded))))
                 }
@@ -994,7 +1052,9 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
               >
                 {loading
                   ? 'Processing...'
-                  : paymentMethod === 'wallet'
+                  : isFreeOrder
+                    ? 'Place Order'
+                    : paymentMethod === 'wallet'
                     ? `Pay ${currency}${formattedAmountCommas(effectiveTotalAmount)} with Wallet`
                     : paymentMethod === 'razorpay'
                       ? `Pay ${currency}${formattedAmountCommas(effectiveTotalAmount)} with Razorpay`
@@ -1314,4 +1374,3 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
 };
 
 export default CheckoutForm;
-

@@ -68,7 +68,7 @@ const WalletMetrics = ({ cols = 2 }) => {
                 <div className="flex items-end justify-between mt-5">
                     <div>
                         <span className="text-sm text-brand-500 dark:text-brand-400">TDS Deductions</span>
-                        <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white">₹{formattedAmount(Number(walletData?.tds_deductions || 0))}</h4>
+                        <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white">₹{formattedAmount(Number(walletData?.total_tds_deducted || 0))}</h4>
                     </div>
                     <Badge color="success">TDS</Badge>
                 </div>

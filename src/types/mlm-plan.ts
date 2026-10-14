@@ -14,17 +14,12 @@ export interface GenerationCommission {
   level: number;
   level_name: string;
   percentage: string;
-}
-
-export interface MlmRank {
-  id: number;
-  rank_name: string;
-  milestone_threshold: string;
-  threshold_type: string;
+  team_size_threshold: string;
 }
 
 export interface MlmReward {
   id?: number;
+  generation_commission_id: string;
   reward_type: string;
   reward_value: string;
   reward_description: string;
@@ -39,7 +34,6 @@ export interface MlmPlanResponse {
     plan_settings?: Partial<MlmPlanSettings>;
     commissions?: Array<Record<string, unknown>>;
     generation_commissions?: Array<Record<string, unknown>>;
-    ranks?: Array<Record<string, unknown>>;
     rewards?: Array<Record<string, unknown>>;
   };
 }

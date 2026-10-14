@@ -61,10 +61,10 @@ export const DistributorDashboard = ({ data, loading }: DistributorDashboardProp
         const fetchRanks = async () => {
             try {
                 const response = await serverCallFuction<MlmPlanResponse>("GET", "api/settings/mlm-plan");
-                if (response && response.data?.ranks) {
+                if (response && response.data?.commissions) {
                     const mapped: Record<number, string> = {};
-                    (response.data.ranks as Array<{ id: number; rank_name: string }>).forEach((rank, index) => {
-                        mapped[index + 1] = rank.rank_name;
+                    (response.data.commissions as Array<{ level_no: number; level_name: string }>).forEach((commission) => {
+                        mapped[commission.level_no] = commission.level_name;
                     });
                     setRankNames(mapped);
                 }
