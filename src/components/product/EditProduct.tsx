@@ -9,7 +9,7 @@ import DropZone from '@/components/form/DropZone';
 import Button from '@/components/ui/button/Button';
 import Alert from '@/components/ui/alert/Alert';
 import Label from '@/components/form/Label';
-import { X as XIcon, PlusCircle } from 'lucide-react';
+import { X as XIcon, PlusCircle, Trash2 } from 'lucide-react';
 import VariantManager from '@/app/(admin)/products/add/components/VariantManager';
 import { Modal } from '@/components/ui/modal';
 import VariantsAccordion from '@/app/(admin)/products/add/components/VariantsAccordion';
@@ -22,10 +22,16 @@ interface Props {
   productId: string;
 }
 
+interface SpecificationRow {
+  name: string;
+  value: string;
+}
+
 const EditProductPage = ({ productId }: Props) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    short_desc:'',
     price: '',
     discounted_price: '',
     mrp_percentage: '',
@@ -47,6 +53,9 @@ const EditProductPage = ({ productId }: Props) => {
     dimension_width: '',
     dimension_height: '',
     dimension_unit: '',
+
+    // Custom Specifications
+    specifications: [] as SpecificationRow[],
   });
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -73,7 +82,7 @@ const EditProductPage = ({ productId }: Props) => {
         const [catRes, taxRes, attrRes] = await Promise.all([
           serverCallFuction('GET', 'api/products/categories'),
           serverCallFuction('GET', 'api/tax'),
-          serverCallFuction('GET', 'api/products/attributes')
+          serverCallFuction('GET', 'api/products/attributes'),
         ]);
         if (catRes?.success !== false) setCategories(catRes.data || []);
         if (taxRes?.success !== false) setTaxes(taxRes.data || []);
@@ -85,6 +94,33 @@ const EditProductPage = ({ productId }: Props) => {
     fetchData();
   }, []);
 
+  // Helper to safely parse specifications from backend
+  const parseSpecifications = (rawSpecs: any): SpecificationRow[] => {
+    if (!rawSpecs) return [];
+    try {
+      const data = typeof rawSpecs === 'string' ? JSON.parse(rawSpecs) : rawSpecs;
+
+      // Agar backend se key-value object aaya hai: { warranty: "1 year", material: "Cotton" }
+      if (typeof data === 'object' && !Array.isArray(data)) {
+        return Object.entries(data).map(([name, value]) => ({
+          name,
+          value: String(value),
+        }));
+      }
+
+      // Agar array format aaya hai
+      if (Array.isArray(data)) {
+        return data.map((item: any) => ({
+          name: item.name || '',
+          value: item.value || '',
+        }));
+      }
+    } catch (e) {
+      console.error('Failed to parse specifications:', e);
+    }
+    return [];
+  };
+
   // 2. Fetch Specific Product Data
   useEffect(() => {
     if (!productId) return;
@@ -94,32 +130,38 @@ const EditProductPage = ({ productId }: Props) => {
         if (res.success) {
           const p = res.data as Product;
           setProduct(p);
+
+          const loadedSpecs = parseSpecifications((p as any).specifications);
+
           setFormData({
             name: p.name || '',
             description: p.description || '',
+            short_desc: (p as any).short_desc || '', // <-- Added
             price: p.base_price?.toString() || '0',
             discounted_price: p.discounted_price?.toString() || '',
             mrp_percentage: p.mrp_percentage?.toString() || '0',
             dpc_percentage: p.dpc_percentage?.toString() || '0',
             cat_id: p.cat_id?.toString() || '',
-            subcategories: (p.subcategories || []).map(id => id.toString()),
-            attributes: (p.attributes || []).map(id => id.toString()),
+            subcategories: (p.subcategories || []).map((id) => id.toString()),
+            attributes: (p.attributes || []).map((id) => id.toString()),
             variants: p.variants || [],
             f_image: null,
             g_image: [],
             status: p.status || 'active',
             tax_id: p.tax_id?.toString() || '',
-            slug: p.slug || "",
+            slug: p.slug || '',
 
             hsn_code: (p as any).hsn_code || '',
             weight: (p as any).weight || '',
             dimension_length: (p as any).dimension_length || '',
             dimension_width: (p as any).dimension_width || '',
             dimension_height: (p as any).dimension_height || '',
-            dimension_unit: (p as any).dimension_unit || ''
+            dimension_unit: (p as any).dimension_unit || '',
+
+            specifications: loadedSpecs,
           });
           setFImagePreview(p.f_image || '');
-          setGImagePreviews(p.g_image || []); // These are URLs from the server initially
+          setGImagePreviews(p.g_image || []);
         }
       } catch (err) {
         setError('Failed to load product details');
@@ -131,7 +173,7 @@ const EditProductPage = ({ productId }: Props) => {
   // 3. Handle Subcategory Filtering logic
   useEffect(() => {
     if (formData.cat_id && categories.length > 0) {
-      const filtered = categories.filter(cat => cat.parent_id?.toString() === formData.cat_id);
+      const filtered = categories.filter((cat) => cat.parent_id?.toString() === formData.cat_id);
       setSubcategories(filtered);
     }
   }, [formData.cat_id, categories]);
@@ -144,27 +186,61 @@ const EditProductPage = ({ productId }: Props) => {
   // Image Handlers
   const handleFeaturedImageChange = (files: File[]) => {
     if (files[0]) {
-      setFormData(prev => ({ ...prev, f_image: files[0] }));
+      setFormData((prev) => ({ ...prev, f_image: files[0] }));
       setFImagePreview(URL.createObjectURL(files[0]));
     }
   };
 
-  const handleGalleryChange = (files: File[]) => {
-    setFormData(prev => ({ ...prev, g_image: files }));
-    const newPreviews = files.map(file => URL.createObjectURL(file));
-    setGImagePreviews(newPreviews);
+  const handleGalleryChange = (incomingFiles: File[]) => {
+    if (!incomingFiles || incomingFiles.length === 0) return;
+    const remainingSlots = 5 - formData.g_image.length;
+    if (remainingSlots <= 0) {
+      setError('Maximum of 5 gallery images allowed');
+      return;
+    }
+    const filesToAdd = incomingFiles.slice(0, remainingSlots);
+    const newPreviews = filesToAdd.map((file) => URL.createObjectURL(file));
+
+    setGImagePreviews((prev) => [...prev, ...newPreviews]);
+    setFormData((prev) => ({
+      ...prev,
+      g_image: [...prev.g_image, ...filesToAdd],
+    }));
   };
 
   const removeGalleryImage = (index: number) => {
     const newFiles = formData.g_image.filter((_, i) => i !== index);
     const newPreviews = gImagePreviews.filter((_, i) => i !== index);
-    setFormData(prev => ({ ...prev, g_image: newFiles }));
+    setFormData((prev) => ({ ...prev, g_image: newFiles }));
     setGImagePreviews(newPreviews);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Specification Handlers
+  const handleAddSpecification = () => {
+    setFormData((prev) => ({
+      ...prev,
+      specifications: [...prev.specifications, { name: '', value: '' }],
+    }));
+  };
+
+  const handleSpecificationChange = (index: number, field: 'name' | 'value', val: string) => {
+    setFormData((prev) => {
+      const updated = [...prev.specifications];
+      updated[index] = { ...updated[index], [field]: val };
+      return { ...prev, specifications: updated };
+    });
+  };
+
+  const handleRemoveSpecification = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      specifications: prev.specifications.filter((_, i) => i !== index),
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -176,6 +252,7 @@ const EditProductPage = ({ productId }: Props) => {
       const formDataToSend = new FormData();
       formDataToSend.append('name', formData.name);
       formDataToSend.append('description', formData.description);
+      formDataToSend.append('short_desc', formData.short_desc || ''); // <-- Added
       formDataToSend.append('base_price', formData.price);
       formDataToSend.append('discounted_price', formData.discounted_price || '0');
       formDataToSend.append('mrp_percentage', formData.mrp_percentage || '0');
@@ -193,25 +270,37 @@ const EditProductPage = ({ productId }: Props) => {
       formDataToSend.append('dimension_height', formData.dimension_height || '');
       formDataToSend.append('dimension_unit', formData.dimension_unit || '');
 
-      // Method Spoofing for APIs that require it for PUT requests with FormData
       formDataToSend.append('_method', 'PUT');
 
-      formData.subcategories.forEach(sub => formDataToSend.append('subcategories[]', sub));
-      formData.attributes.forEach(attr => formDataToSend.append('attributes[]', attr));
+      formData.subcategories.forEach((sub) => formDataToSend.append('subcategories[]', sub));
+      formData.attributes.forEach((attr) => formDataToSend.append('attributes[]', attr));
 
       if (formData.f_image) formDataToSend.append('f_image', formData.f_image);
 
       formData.g_image.forEach((image, index) => {
         formDataToSend.append(`g_image[${index}]`, image);
       });
-      // formData.g_image.forEach((image) => formDataToSend.append('g_image[]', image));
 
       if (formData.variants.length > 0) {
         formDataToSend.append('variants', JSON.stringify(formData.variants));
       }
 
-      // Use POST with _method PUT spoofing for standard multipart support
-      const response = await serverCallFuction('PUT', `api/products/products/${productId}`, formDataToSend);
+      // Convert specifications to JSON object: {"warranty": "1 year", "material": "Cotton"}
+      const validSpecs = formData.specifications.filter(
+        (item) => item.name.trim() !== '' && item.value.trim() !== ''
+      );
+      const specObject = validSpecs.reduce((acc, curr) => {
+        acc[curr.name.trim()] = curr.value.trim();
+        return acc;
+      }, {} as Record<string, string>);
+
+      formDataToSend.append('specifications', JSON.stringify(specObject));
+
+      const response = await serverCallFuction(
+        'PUT',
+        `api/products/products/${productId}`,
+        formDataToSend
+      );
 
       if (response?.success) {
         setSuccess('Product updated successfully!');
@@ -251,10 +340,9 @@ const EditProductPage = ({ productId }: Props) => {
             <Select
               defaultValue={formData.cat_id}
               options={categories
-                .filter(cat => !cat.parent_id)
-                .map(cat => ({ value: cat.id.toString(), label: cat.name }))
-              }
-              onChange={(val) => setFormData(prev => ({ ...prev, cat_id: val }))}
+                .filter((cat) => !cat.parent_id)
+                .map((cat) => ({ value: cat.id.toString(), label: cat.name }))}
+              onChange={(val) => setFormData((prev) => ({ ...prev, cat_id: val }))}
             />
           </div>
 
@@ -262,8 +350,8 @@ const EditProductPage = ({ productId }: Props) => {
             <Label>Subcategories</Label>
             <MultiSelect
               value={formData.subcategories}
-              options={subcategories.map(sub => ({ value: sub.id.toString(), label: sub.name }))}
-              onChange={(val) => setFormData(prev => ({ ...prev, subcategories: val }))}
+              options={subcategories.map((sub) => ({ value: sub.id.toString(), label: sub.name }))}
+              onChange={(val) => setFormData((prev) => ({ ...prev, subcategories: val }))}
             />
           </div>
 
@@ -273,9 +361,9 @@ const EditProductPage = ({ productId }: Props) => {
               defaultValue={formData.status}
               options={[
                 { value: 'active', label: 'Active' },
-                { value: 'inactive', label: 'Inactive' }
+                { value: 'inactive', label: 'Inactive' },
               ]}
-              onChange={(val) => setFormData(prev => ({ ...prev, status: val }))}
+              onChange={(val) => setFormData((prev) => ({ ...prev, status: val }))}
             />
           </div>
 
@@ -283,19 +371,18 @@ const EditProductPage = ({ productId }: Props) => {
             <Label>Tax</Label>
             <Select
               defaultValue={formData.tax_id}
-              options={taxes.map(tax => ({
+              options={taxes.map((tax) => ({
                 value: tax.id.toString(),
-                label: `${tax.name || (tax as any).tax_name} (${(tax as any).percentage || (tax as any).tax_percentage}%)`
+                label: `${tax.name || (tax as any).tax_name} (${(tax as any).percentage || (tax as any).tax_percentage}%)`,
               }))}
-              onChange={(val) => setFormData(prev => ({ ...prev, tax_id: val }))}
+              onChange={(val) => setFormData((prev) => ({ ...prev, tax_id: val }))}
             />
           </div>
         </div>
 
         {/* Pricing Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl">
-
-          {/* Shipping / dimensions (optional) */}
+          {/* Shipping / dimensions */}
           <div className="md:col-span-2">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div>
@@ -368,30 +455,118 @@ const EditProductPage = ({ productId }: Props) => {
               </div>
             </div>
           </div>
+
           <div>
             <Label>Base Price</Label>
             <Input type="number" name="price" value={formData.price} onChange={handleInputChange} />
           </div>
           <div>
             <Label>Discounted Price</Label>
-            <Input type="number" name="discounted_price" value={formData.discounted_price} onChange={handleInputChange} />
+            <Input
+              type="number"
+              name="discounted_price"
+              value={formData.discounted_price}
+              onChange={handleInputChange}
+            />
           </div>
           <div>
             <Label>MRP %</Label>
-            <Input type="number" name="mrp_percentage" value={formData.mrp_percentage} onChange={handleInputChange} min="0" max="100" step="0.01" />
+            <Input
+              type="number"
+              name="mrp_percentage"
+              value={formData.mrp_percentage}
+              onChange={handleInputChange}
+              min="0"
+              max="100"
+              step="0.01"
+            />
           </div>
           <div>
             <Label>DPC %</Label>
-            <Input type="number" name="dpc_percentage" value={formData.dpc_percentage} onChange={handleInputChange} min="0" max="100" step="0.01" />
+            <Input
+              type="number"
+              name="dpc_percentage"
+              value={formData.dpc_percentage}
+              onChange={handleInputChange}
+              min="0"
+              max="100"
+              step="0.01"
+            />
           </div>
         </div>
+
+        {/* Custom Specifications Section */}
+        <div className="space-y-4 border rounded-lg p-5 bg-gray-50/50 dark:bg-gray-800/40">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-base font-semibold">Custom Specifications</Label>
+              <p className="text-xs text-gray-500">
+                Add or edit key-value pairs (e.g., Material: Cotton, Warranty: 1 Year)
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddSpecification}
+            >
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Add Row
+            </Button>
+          </div>
+
+          {formData.specifications.length === 0 ? (
+            <p className="text-sm text-gray-400 italic">No specifications added yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {formData.specifications.map((row, index) => (
+                <div key={index} className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Name (e.g. Color, Material)"
+                      value={row.name}
+                      onChange={(e) => handleSpecificationChange(index, 'name', e.target.value)}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Value (e.g. Red, Cotton)"
+                      value={row.value}
+                      onChange={(e) => handleSpecificationChange(index, 'value', e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50 border-red-200"
+                    onClick={() => handleRemoveSpecification(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+{/* Short Description */}
+<div>
+  <Label htmlFor="short_desc">Short Description</Label>
+  <RichTextEditor
+    value={formData.short_desc}
+    onChange={(val) => setFormData(prev => ({ ...prev, short_desc: val }))}
+    placeholder="Enter product short description"
+    className="min-h-[150px]"
+  />
+</div>
+
 
         <div>
           <Label>Description</Label>
           <RichTextEditor
             name="description"
             value={formData.description}
-            onChange={(val) => setFormData(prev => ({ ...prev, description: val }))}
+            onChange={(val) => setFormData((prev) => ({ ...prev, description: val }))}
             rows={5}
             className="min-h-[200px]"
           />
@@ -403,13 +578,18 @@ const EditProductPage = ({ productId }: Props) => {
           <div className="mt-2">
             <MultiSelect
               value={formData.attributes}
-              options={attributes.map(attr => ({ value: attr.id.toString(), label: attr.name }))}
-              onChange={(val) => setFormData(prev => ({ ...prev, attributes: val }))}
+              options={attributes.map((attr) => ({ value: attr.id.toString(), label: attr.name }))}
+              onChange={(val) => setFormData((prev) => ({ ...prev, attributes: val }))}
             />
           </div>
 
           {formData.attributes.length > 0 && (
-            <Button type="button" variant="outline" className="mt-4" onClick={() => setShowVariantModal(true)}>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-4"
+              onClick={() => setShowVariantModal(true)}
+            >
               <PlusCircle className="mr-2 h-4 w-4" />
               {formData.variants.length > 0 ? 'Modify Variants' : 'Generate Variants'}
             </Button>
@@ -420,7 +600,12 @@ const EditProductPage = ({ productId }: Props) => {
           <VariantsAccordion
             variants={formData.variants}
             onEdit={() => setShowVariantModal(true)}
-            onDelete={(idx) => setFormData(prev => ({ ...prev, variants: prev.variants.filter((_, i) => i !== idx) }))}
+            onDelete={(idx) =>
+              setFormData((prev) => ({
+                ...prev,
+                variants: prev.variants.filter((_, i) => i !== idx),
+              }))
+            }
           />
         )}
 
@@ -431,7 +616,11 @@ const EditProductPage = ({ productId }: Props) => {
             <DropZone onFilesChange={handleFeaturedImageChange} maxFiles={1} />
             {fImagePreview && (
               <div className="mt-3 relative w-32 h-32">
-                <img src={fImagePreview} className="w-full h-full rounded-lg object-cover border" alt="Featured" />
+                <img
+                  src={fImagePreview}
+                  className="w-full h-full rounded-lg object-cover border"
+                  alt="Featured"
+                />
               </div>
             )}
           </div>
@@ -442,7 +631,11 @@ const EditProductPage = ({ productId }: Props) => {
             <div className="mt-3 flex flex-wrap gap-3">
               {gImagePreviews.map((url, idx) => (
                 <div key={idx} className="relative group w-20 h-20">
-                  <img src={url} className="w-full h-full rounded-md object-cover border" alt="Gallery" />
+                  <img
+                    src={url}
+                    className="w-full h-full rounded-md object-cover border"
+                    alt="Gallery"
+                  />
                   <button
                     type="button"
                     onClick={() => removeGalleryImage(idx)}
@@ -468,13 +661,17 @@ const EditProductPage = ({ productId }: Props) => {
       </form>
 
       {/* Modal for Variant Management */}
-      <Modal isOpen={showVariantModal} onClose={() => setShowVariantModal(false)} className="max-w-4xl">
+      <Modal
+        isOpen={showVariantModal}
+        onClose={() => setShowVariantModal(false)}
+        className="max-w-4xl"
+      >
         <VariantManager
           points_system={points_setting}
           selectedAttributes={formData.attributes}
           attrValues={attrValues}
           variants={formData.variants}
-          onVariantsChange={(v) => setFormData(prev => ({ ...prev, variants: v }))}
+          onVariantsChange={(v) => setFormData((prev) => ({ ...prev, variants: v }))}
           onClose={() => setShowVariantModal(false)}
         />
       </Modal>

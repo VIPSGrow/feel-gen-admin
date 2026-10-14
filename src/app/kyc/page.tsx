@@ -12,6 +12,7 @@ import { User } from '@/lib/auth';
 import Link from 'next/link';
 import { ChevronLeftIcon, TrashBinIcon } from '@/icons';
 import { usePreloader } from '@/context/PreloaderContext';
+import { compressImage } from '@/lib/imageCompression';
 
 const KYCPage = () => {
   const [alreadySubmitted, setAlreadySubmitted] = useState(false)
@@ -109,7 +110,6 @@ const KYCPage = () => {
   };
 
   const handleFileChange = (fileName: keyof typeof files, file: File) => {
-    setFiles(prev => ({ ...prev, [fileName]: file }));
     setError('');
     // Reset upload state when new file selected
     setUploadProgress(0);
@@ -118,6 +118,20 @@ const KYCPage = () => {
       xhrRef.current.abort();
       xhrRef.current = null;
     }
+
+    // Add file size validation: allow 100KB to 10MB
+    const sizeKB = file.size / 1024;
+    if (sizeKB < 100) {
+      setError(`File size must be at least 100KB. Current: ${Math.round(sizeKB)}KB`);
+      return;
+    }
+    if (sizeKB > 10 * 1024) { // 10MB in KB
+      setError(`File size must be less than 10MB. Current: ${Math.round(sizeKB)}KB`);
+      return;
+    }
+
+    // If we get here, the file size is acceptable for compression
+    setFiles(prev => ({ ...prev, [fileName]: file }));
   };
 
   const triggerFileInput = (fileName: keyof typeof files) => {
@@ -145,12 +159,45 @@ const KYCPage = () => {
       const formDataToSend = new FormData();
       formDataToSend.append('id', tempUser.id.toString());
 
-      if (files.pan) formDataToSend.append('PAN', files.pan);
-      if (files.aadhaarFront) formDataToSend.append('Aadhaar_Front', files.aadhaarFront);
-      if (files.aadhaarBack) formDataToSend.append('Aadhaar_Back', files.aadhaarBack);
-      if (files.bankPassbook) formDataToSend.append('passbook', files.bankPassbook);
-      if (files.profileImage) formDataToSend.append('profile', files.profileImage);
-      if (files.gstin) formDataToSend.append('gstin', files.gstin);
+      // Compress images - the compressImage function will automatically:
+      // - Leave files unchanged if they're already 100KB-500KB
+      // - Compress files that are too small (<100KB) or too large (>500KB)
+      // - Guarantee output files will be between 100KB-500KB
+      const fileEntries = Object.entries(files).filter(([, file]) => file !== null);
+      const compressedFilesPromises = fileEntries.map(async ([key, file]) => {
+        try {
+          const compressed = await compressImage(file!);
+          return [key, compressed];
+        } catch (err) {
+          throw err;
+        }
+      });
+
+      // Wait for all compressions to complete
+      const compressedFilesResults = await Promise.allSettled(compressedFilesPromises);
+
+      // Check for any errors
+      const errors = compressedFilesResults
+        .filter(result => result.status === 'rejected')
+        .map(result => result.reason);
+
+      if (errors.length > 0) {
+        throw new Error(errors[0]); // Throw the first error to be caught by the outer catch
+      }
+
+      const compressedFiles = compressedFilesResults
+        .filter(result => result.status === 'fulfilled')
+        .map(result => result.value);
+
+      // Append compressed files to formData
+      for (const [key, file] of compressedFiles) {
+        if (key === 'pan') formDataToSend.append('PAN', file);
+        else if (key === 'aadhaarFront') formDataToSend.append('Aadhaar_Front', file);
+        else if (key === 'aadhaarBack') formDataToSend.append('Aadhaar_Back', file);
+        else if (key === 'bankPassbook') formDataToSend.append('passbook', file);
+        else if (key === 'profileImage') formDataToSend.append('profile', file);
+        else if (key === 'gstin') formDataToSend.append('gstin', file);
+      }
 
       const xhr = new XMLHttpRequest();
       xhrRef.current = xhr;
@@ -204,14 +251,11 @@ const KYCPage = () => {
       xhr.send(formDataToSend);
     } catch (err: unknown) {
       console.error('Upload error:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error');
+      setUploadStatus('error');
     } finally {
       setLoading(false);
-      // startTransition(() => {
-      //   setLoading(false);
-      // });
-      // do not override loading state here; wait for xhr events
     }
-
   };
 
   const submitKYC = async (e: React.FormEvent) => {
@@ -378,11 +422,11 @@ const KYCPage = () => {
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            const sizeKB = (file.size / 1024).toFixed(0);
-                            if (file.size < 100 * 1024 || file.size > 500 * 1024) {
-                              setError(`File size must be 100KB - 500KB. Current: ${sizeKB}KB`);
-                              return;
-                            }
+                            // const sizeKB = (file.size / 1024).toFixed(0);
+                            // if (file.size < 100 * 1024 || file.size > 500 * 1024) {
+                            //   setError(`File size must be 100KB - 500KB. Current: ${sizeKB}KB`);
+                            //   return;
+                            // }
 
                             handleFileChange(key, file);
                           }

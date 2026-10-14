@@ -9,7 +9,7 @@ import DropZone from '@/components/form/DropZone';
 import Button from '@/components/ui/button/Button';
 import Alert from '@/components/ui/alert/Alert';
 import Label from '@/components/form/Label';
-import { Image as ImageIcon, X as XIcon, PlusCircle } from 'lucide-react';
+import { Image as ImageIcon, X as XIcon, PlusCircle, Trash2 } from 'lucide-react';
 import VariantManager from '@/app/(admin)/products/add/components/VariantManager';
 import { Modal } from '@/components/ui/modal';
 import VariantsAccordion from '@/app/(admin)/products/add/components/VariantsAccordion';
@@ -55,6 +55,11 @@ interface Variant {
 
 const AddProductPage = () => {
 
+  interface SpecificationRow {
+    name: string;
+    value: string;
+  }
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -78,6 +83,7 @@ const AddProductPage = () => {
     dimension_length: '',
     dimension_width: '',
     dimension_height: '',
+    specifications: [] as SpecificationRow[], // Typed array
     dimension_unit: '',
   });
 
@@ -194,20 +200,71 @@ const AddProductPage = () => {
     }
   };
 
-  const handleGalleryImageChange = (files: File[]) => {
-    const newFiles = files;
-    const previews = newFiles.map(file => URL.createObjectURL(file));
-    setGImagePreviews(previews);
-    setFormData(prev => ({ ...prev, g_image: newFiles }));
+  // const handleGalleryImageChange = (files: File[]) => {
+  //   const newFiles = files;
+  //   const previews = newFiles.map(file => URL.createObjectURL(file));
+  //   setGImagePreviews(previews);
+  //   setFormData(prev => ({ ...prev, g_image: newFiles }));
+  // };
+
+  const handleGalleryImageChange = (incomingFiles: File[]) => {
+    if (!incomingFiles || incomingFiles.length === 0) return;
+
+    // Calculate how many more files can be added (max 5)
+    const remainingSlots = 5 - formData.g_image.length;
+    if (remainingSlots <= 0) {
+      setError('Maximum of 5 gallery images allowed');
+      return;
+    }
+
+    // Take only up to the remaining allowed count
+    const filesToAdd = incomingFiles.slice(0, remainingSlots);
+    const newPreviews = filesToAdd.map((file) => URL.createObjectURL(file));
+
+    // Append new files and previews to existing ones
+    setGImagePreviews((prev) => [...prev, ...newPreviews]);
+    setFormData((prev) => ({
+      ...prev,
+      g_image: [...prev.g_image, ...filesToAdd],
+    }));
   };
 
   const removePreview = (index: number, type: 'gallery') => {
     if (type === 'gallery') {
+      // Revoke the blob URL to avoid memory leaks
+      if (gImagePreviews[index]) {
+        URL.revokeObjectURL(gImagePreviews[index]);
+      }
+
       const newFiles = formData.g_image.filter((_, i) => i !== index);
       const newPreviews = gImagePreviews.filter((_, i) => i !== index);
+
       setGImagePreviews(newPreviews);
-      setFormData(prev => ({ ...prev, g_image: newFiles }));
+      setFormData((prev) => ({ ...prev, g_image: newFiles }));
     }
+  };
+
+
+  const handleAddSpecification = () => {
+    setFormData(prev => ({
+      ...prev,
+      specifications: [...prev.specifications, { name: '', value: '' }]
+    }));
+  };
+
+  const handleSpecificationChange = (index: number, field: 'name' | 'value', value: string) => {
+    setFormData(prev => {
+      const updated = [...prev.specifications];
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...prev, specifications: updated };
+    });
+  };
+
+  const handleRemoveSpecification = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      specifications: prev.specifications.filter((_, i) => i !== index)
+    }));
   };
 
 
@@ -238,6 +295,8 @@ const AddProductPage = () => {
       setError("Please tax");
       return
     }
+
+
 
     setSubmitLoading(true);
     setError('');
@@ -275,34 +334,51 @@ const AddProductPage = () => {
         formDataToSend.append('variants', JSON.stringify(formData.variants));
       }
 
+
+      // 1. Filter out empty names or values
+      const validSpecs = formData.specifications.filter(
+        (item) => item.name.trim() !== '' && item.value.trim() !== ''
+      );
+
+      // 2. Convert array of rows [{ name: 'warranty', value: '1 year' }] 
+      //    into key-value object { "warranty": "1 year", ... }
+      const specificationsObject = validSpecs.reduce((acc, curr) => {
+        acc[curr.name.trim()] = curr.value.trim();
+        return acc;
+      }, {} as Record<string, string>);
+
+      // 3. Append JSON string to FormData
+      formDataToSend.append('specifications', JSON.stringify(specificationsObject));
+
       const response = await serverCallFuction('POST', 'api/products/products', formDataToSend);
 
       if (response && response.success === true) {
         setSuccess('Product created successfully!');
-setFormData({
-           name: '',
-           description: '',
-           short_description: '',
-           price: '',
-           discounted_price: '',
-           mrp_percentage: '',
-           dpc_percentage: '',
-           cat_id: '',
-           subcategories: [],
-           attributes: [],
-           variants: [],
-           f_image: null,
-           g_image: [],
-           status: 'active',
-           tax_id: '',
+        setFormData({
+          name: '',
+          description: '',
+          short_description: '',
+          price: '',
+          discounted_price: '',
+          mrp_percentage: '',
+          dpc_percentage: '',
+          cat_id: '',
+          subcategories: [],
+          attributes: [],
+          variants: [],
+          f_image: null,
+          g_image: [],
+          status: 'active',
+          tax_id: '',
 
-           hsn_code: '',
-           weight: '',
-           dimension_length: '',
-           dimension_width: '',
-           dimension_height: '',
-           dimension_unit: '',
-         });
+          hsn_code: '',
+          weight: '',
+          dimension_length: '',
+          dimension_width: '',
+          dimension_height: '',
+          dimension_unit: '',
+          specifications: [],
+        });
         setFImagePreview('');
         setGImagePreviews([]);
         setTimeout(() => {
@@ -418,18 +494,9 @@ setFormData({
 
           {/* Shipping / dimensions (optional) */}
           <div className="md:col-span-2">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div>
-                <Label htmlFor="hsn_code">HSN Code</Label>
-                <Input
-                  id="hsn_code"
-                  name="hsn_code"
-                  placeholder="Enter HSN code"
-                  defaultValue={formData.hsn_code}
-                  onChange={handleInputChange}
-                />
-              </div>
-              <div>
+            <div className="grid grid-cols-1  gap-6">
+
+              {/* <div>
                 <Label htmlFor="weight">Weight</Label>
                 <Input
                   id="weight"
@@ -486,8 +553,76 @@ setFormData({
                   defaultValue={formData.dimension_unit}
                   onChange={handleInputChange}
                 />
+              </div> */}
+
+
+              {/* Specifications Section */}
+              <div className="space-y-4 border rounded-lg p-5 bg-gray-50/50 dark:bg-gray-900/50 ">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-base font-semibold">Custom Specifications</Label>
+                    <p className="text-xs text-gray-500">Add custom key-value pairs (e.g., Material: Cotton, Warranty: 1 Year)</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddSpecification}
+                  >
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Add Row
+                  </Button>
+                </div>
+
+                {formData.specifications.length === 0 ? (
+                  <p className="text-sm text-gray-400 italic">No specifications added yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {formData.specifications.map((row, index) => (
+                      <div key={index} className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <Input
+                            placeholder="Name (e.g. Color, Material)"
+                            value={row.name}
+                            onChange={(e) => handleSpecificationChange(index, 'name', e.target.value)}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <Input
+                            placeholder="Value (e.g. Red, Cotton)"
+                            value={row.value}
+                            onChange={(e) => handleSpecificationChange(index, 'value', e.target.value)}
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 border-red-200"
+                          onClick={() => handleRemoveSpecification(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+
+
+
+
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="hsn_code">HSN Code</Label>
+            <Input
+              id="hsn_code"
+              name="hsn_code"
+              placeholder="Enter HSN code"
+              defaultValue={formData.hsn_code}
+              onChange={handleInputChange}
+            />
           </div>
           <div>
             <Label htmlFor="price">Price *</Label>
@@ -662,21 +797,31 @@ setFormData({
             )}
           </div>
           <div>
-            <Label>Gallery Images</Label>
+            <Label>Gallery Images ({formData.g_image.length}/5)</Label>
             <DropZone
               onFilesChange={handleGalleryImageChange}
               multiple
-              maxFiles={5}
-              label="Drag & drop gallery images or click to browse (max 5)"
+              maxFiles={Math.max(1, 5 - formData.g_image.length)}
+              disabled={formData.g_image.length >= 5}
+              label={
+                formData.g_image.length >= 5
+                  ? 'Maximum limit reached (5 images)'
+                  : 'Drag & drop gallery images or click to browse (max 5)'
+              }
             />
             {gImagePreviews.length > 0 && (
               <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
                 {gImagePreviews.map((preview, index) => (
                   <div key={index} className="relative group">
-                    <img src={preview} alt={`Preview ${index}`} className="w-full h-24 object-cover rounded-lg" />
+                    <img
+                      src={preview}
+                      alt={`Preview ${index}`}
+                      className="w-full h-24 object-cover rounded-lg"
+                    />
                     <button
+                      type="button"
                       onClick={() => removePreview(index, 'gallery')}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all"
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all shadow"
                     >
                       <XIcon className="h-3 w-3" />
                     </button>

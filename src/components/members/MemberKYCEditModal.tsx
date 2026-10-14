@@ -6,6 +6,7 @@ import Button from "@/components/ui/button/Button";
 import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import serverCallFuction, { ServerResponse } from "@/lib/constantFunction";
+import { compressImage } from "@/lib/imageCompression";
 
 interface MemberKYCEditModalProps {
     isOpen: boolean;
@@ -145,10 +146,23 @@ export default function MemberKYCEditModal({
         setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
-    const handleFileChange = (key: string, file: File) => {
-        setFiles((prev) => ({ ...prev, [key]: file }));
-        setMessage(null);
-    };
+     const handleFileChange = (key: string, file: File) => {
+         setMessage(null);
+         
+         // Add file size validation: allow 100KB to 10MB
+         const sizeKB = file.size / 1024;
+         if (sizeKB < 100) {
+             setMessage({ type: "error", text: `File size must be at least 100KB. Current: ${Math.round(sizeKB)}KB` });
+             return;
+         }
+         if (sizeKB > 10 * 1024) { // 10MB in KB
+             setMessage({ type: "error", text: `File size must be less than 10MB. Current: ${Math.round(sizeKB)}KB` });
+             return;
+         }
+
+         // If we get here, the file size is acceptable for compression
+         setFiles((prev) => ({ ...prev, [key]: file }));
+     };
 
     // Save bank / nominee / doc numbers via the downline update endpoint
     const handleSaveDetails = async () => {
@@ -193,45 +207,78 @@ export default function MemberKYCEditModal({
         }
     };
 
-    // Upload KYC documents on behalf of the member
-    const handleUploadDocs = async () => {
-        if (!member) return;
-        const uploaded = Object.values(files).filter(Boolean).length;
-        if (uploaded === 0) {
-            setMessage({ type: "error", text: "Please select at least one document to upload." });
-            return;
-        }
+      // Upload KYC documents on behalf of the member
+      const handleUploadDocs = async () => {
+          if (!member) return;
+          const uploaded = Object.values(files).filter(Boolean).length;
+          if (uploaded === 0) {
+              setMessage({ type: "error", text: "Please select at least one document to upload." });
+              return;
+          }
 
-        setLoading(true);
-        setMessage(null);
-        try {
-            const formDataToSend = new FormData();
-            formDataToSend.append("id", member.id.toString());
+          setLoading(true);
+          setMessage(null);
+          try {
+               const formDataToSend = new FormData();
+               formDataToSend.append("id", member.id.toString());
 
-            if (files.aadhaarFront) formDataToSend.append("Aadhaar_Front", files.aadhaarFront);
-            if (files.aadhaarBack) formDataToSend.append("Aadhaar_Back", files.aadhaarBack);
-            if (files.pan) formDataToSend.append("PAN", files.pan);
-            if (files.bankPassbook) formDataToSend.append("passbook", files.bankPassbook);
-            if (files.profileImage) formDataToSend.append("profile", files.profileImage);
-            if (files.gstin) formDataToSend.append("gstin", files.gstin);
+               // Compress images - the compressImage function will automatically:
+               // - Leave files unchanged if they're already 100KB-500KB
+               // - Compress files that are too small (<100KB) or too large (>500KB)
+               // - Guarantee output files will be between 100KB-500KB
+               const fileEntries = Object.entries(files).filter(([, file]) => file !== null);
+               const compressedFilesPromises = fileEntries.map(async ([key, file]) => {
+                 try {
+                   const compressed = await compressImage(file!);
+                   return [key, compressed];
+                 } catch (err) {
+                   throw err;
+                 }
+               });
 
-            const res = await serverCallFuction<ServerResponse>("POST", "api/users/kyc/upload", formDataToSend);
+               // Wait for all compressions to complete
+               const compressedFilesResults = await Promise.allSettled(compressedFilesPromises);
 
-            if (res && res.status !== false) {
-                setMessage({ type: "success", text: "KYC documents uploaded successfully." });
-                setFiles({});
-            } else {
-                setMessage({
-                    type: "error",
-                    text: res?.message || "Failed to upload KYC documents.",
-                });
-            }
-        } catch {
-            setMessage({ type: "error", text: "Error uploading KYC documents." });
-        } finally {
-            setLoading(false);
-        }
-    };
+               // Check for any errors
+               const errors = compressedFilesResults
+                 .filter(result => result.status === 'rejected')
+                 .map(result => result.reason);
+
+               if (errors.length > 0) {
+                 throw new Error(errors[0]); // Throw the first error to be caught by the outer catch
+               }
+
+               const compressedFiles = compressedFilesResults
+                 .filter(result => result.status === 'fulfilled')
+                 .map(result => result.value);
+
+               // Append compressed files to formData
+               for (const [key, file] of compressedFiles) {
+                 if (key === 'aadhaarFront') formDataToSend.append("Aadhaar_Front", file);
+                 else if (key === 'aadhaarBack') formDataToSend.append("Aadhaar_Back", file);
+                 else if (key === 'pan') formDataToSend.append("PAN", file);
+                 else if (key === 'bankPassbook') formDataToSend.append("passbook", file);
+                 else if (key === 'profileImage') formDataToSend.append("profile", file);
+                 else if (key === 'gstin') formDataToSend.append("gstin", file);
+               }
+
+              const res = await serverCallFuction<ServerResponse>("POST", "api/users/kyc/upload", formDataToSend);
+
+              if (res && res.status !== false) {
+                  setMessage({ type: "success", text: "KYC documents uploaded successfully." });
+                  setFiles({});
+              } else {
+                  setMessage({
+                      type: "error",
+                      text: res?.message || "Failed to upload KYC documents.",
+                  });
+              }
+          } catch (err: unknown) {
+              setMessage({ type: "error", text: err instanceof Error ? err.message : "Error uploading KYC documents." });
+          } finally {
+              setLoading(false);
+          }
+      };
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} className="max-w-3xl m-4">

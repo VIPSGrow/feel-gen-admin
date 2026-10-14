@@ -66,6 +66,7 @@ export interface Product {
   dpc_percentage?: number;
   mrp_price?: number;
   dpc_price?: number;
+  specifications?: Record<string, any> | null;
 }
 
 export interface ApiResponse<T> {
@@ -73,3 +74,4 @@ export interface ApiResponse<T> {
   data?: T[];
   message?: string;
 }
+
