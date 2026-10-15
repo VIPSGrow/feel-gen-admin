@@ -10,6 +10,7 @@ import Backdrop from '@/layout/Backdrop';
 import React from 'react';
 import AppBottomBar from '@/layout/AppBottomBar';
 import ChatBot from '@/components/chatbot/ChatBot';
+import RankAchievementManager from '@/components/rank/RankAchievementManager';
 
 
 export default function AdminLayout({
@@ -60,6 +61,7 @@ export default function AdminLayout({
 
         <AppBottomBar />
         <ChatBot />
+        {role?.toLowerCase() === 'distributor' && <RankAchievementManager />}
       </div>
     </div>
   );
