@@ -8,21 +8,21 @@ import Link from 'next/link';
 const page = () => {
     const router = useRouter()
     return (
-        <div className="min-h-screen flex items-center bg-gray-50 dark:bg-gray-900 p-4 lg:p-8">
+        <div className="min-h-screen flex items-center bg-gray-50 dark:bg-gray-900 p-3 sm:p-4 lg:p-8">
             {/* Header Area */}
 
 
-            <div className="max-w-6xl mx-auto mb-5">
-                <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-xl">
+            <div className="w-full max-w-6xl mx-auto mb-5">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl sm:rounded-3xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-xl">
 
                     {/* Header Section */}
-                    <div className="p-8 bg-brand-500/5 border-b border-gray-100 dark:border-gray-700">
+                    <div className="p-5 sm:p-8 bg-brand-500/5 border-b border-gray-100 dark:border-gray-700">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                             <div className="space-y-2">
-                                <h1 className="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-3">
-                                    <span className="text-4xl">🏗️</span> Account Activation & Benefits
+                                <h1 className="                                text-xl sm:text-3xl font-black text-gray-900 dark:text-white flex items-center gap-2 sm:gap-3">
+                                                                    <span className="text-2xl sm:text-4xl">🏗️</span> Account Activation & Benefits
                                 </h1>
-                                <p className="text-gray-500 dark:text-gray-400 max-w-2xl leading-relaxed">
+                                <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 max-w-2xl leading-relaxed">
                                     Your account is currently <span className="text-amber-600 font-bold uppercase text-xs px-2 py-0.5 bg-amber-100 rounded-full">Inactive</span>.
                                     Complete the requirement below to activate your account and unlock professional business benefits.
                                 </p>
@@ -30,7 +30,7 @@ const page = () => {
                         </div>
                     </div>
 
-                    <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-10">
+                    <div className="p-5 sm:p-8 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10">
 
                         {/* Activation Criteria Section */}
                         <div className="space-y-6">
@@ -44,7 +44,7 @@ const page = () => {
                             <div className="space-y-2">
                                 <div className="px-5 py-2 rounded-2xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700">
                                     <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">Minimum Purchase</p>
-                                    <p className="text-2xl font-black text-brand-600">Required package purchase</p>
+                                    <p className="text-xl sm:text-2xl font-black text-brand-600">Required package purchase</p>
                                     <p className="text-xs text-gray-500 mt-2">A qualifying package purchase is required to activate your account.</p>
                                 </div>
 
@@ -66,7 +66,7 @@ const page = () => {
                                 <h4 className="text-xl font-bold text-gray-800 dark:text-white">Unlock Exclusive Benefits</h4>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                                 {[
                                     "Direct Partner and Generation Commissions",
                                     "Sponsor-based referral earnings",
@@ -74,8 +74,8 @@ const page = () => {
                                     "Package benefits on every purchase",
                                     "Eligible for direct Wallet Withdrawals"
                                 ].map((benefit, idx) => (
-                                    <div key={idx} className="flex items-center gap-3 px-3 py-1 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                        <div className="h-2 w-2 rounded-full bg-brand-500 shadow-[0_0_8px_rgba(var(--brand-500),0.6)]" />
+                                    <div key={idx} className="flex items-center gap-3 px-3 py-1.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                        <div className="h-2 w-2 shrink-0 rounded-full bg-brand-500 shadow-[0_0_8px_rgba(var(--brand-500),0.6)]" />
                                         <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{benefit}</p>
                                     </div>
                                 ))}
@@ -89,10 +89,10 @@ const page = () => {
                             Join our elite distributor network today
                         </p>
                     </div> */}
-                    <div className="flex flex-col sm:flex-row gap-4 w-full justify-center mb-5">
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full justify-center items-stretch px-5 sm:px-8 mb-5">
                         <Button
                             size="lg"
-                            className="px-10 h-14 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-black text-lg shadow-xl shadow-brand-500/30 transition-all hover:-translate-y-1 active:scale-95 flex items-center gap-3"
+                            className="w-full sm:w-auto px-6 sm:px-10 h-12 sm:h-14 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-black text-base sm:text-lg justify-center shadow-xl shadow-brand-500/30 transition-all hover:-translate-y-1 active:scale-95 flex items-center gap-3"
                             onClick={() => {
                                 // Logic to scroll to products or navigate to shop
                                 // document.getElementById('product-grid')?.scrollIntoView({ behavior: 'smooth' });
@@ -104,11 +104,11 @@ const page = () => {
                             Start Purchasing Now
                         </Button>
 
-                        <Link href={"https://feelsafeco.in/contact-us"} target='_blank'>
+                        <Link href={"https://feelsafeco.in/contact-us"} target='_blank' className="w-full sm:w-auto">
                             <Button
                                 variant="outline"
                                 size={"lg"}
-                                className="px-10 h-14 rounded-2xl border-2 border-gray-200 dark:border-gray-700 font-bold hover:bg-gray-100 dark:hover:bg-gray-800"
+                                className="w-full sm:w-auto px-6 sm:px-10 h-12 sm:h-14 rounded-2xl border-2 border-gray-200 dark:border-gray-700 font-bold hover:bg-gray-100 dark:hover:bg-gray-800"
                             // onClick={() => window.location.href = '/support'}
                             >
                                 Talk to Consultant

@@ -556,7 +556,7 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
         const order = await createRazorpayOrder(paymentAmount, cartItems);
 
         const options = {
-          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_Sfdk41BOifNjN9',
+          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
           amount: order.amount,
           currency: order.currency,
           name: 'Feel Safe Shop',
@@ -661,7 +661,7 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
     }
 
     const options = {
-      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_Sfdk41BOifNjN9',
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
       amount: splitRazorpayOrderData.amount,
       currency: splitRazorpayOrderData.currency,
       name: 'Feel Safe Shop',
@@ -708,8 +708,8 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
     <>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" onReady={() => setRazorpayLoaded(true)} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-10 gap-8 max-w-[1400px] mx-auto px-4">
-        <div className="lg:col-span-6 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-10 gap-6 lg:gap-8 max-w-[1400px] mx-auto px-0 sm:px-4">
+        <div className="order-2 lg:order-1 lg:col-span-6 space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Payment Details</CardTitle>
@@ -948,7 +948,7 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                     Wallet Balance: {currency}{formattedAmountCommas(walletTotalAmount)}
                   </p>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="split-wallet-amount">Wallet Portion</Label>
                       <Input
@@ -1070,8 +1070,8 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                 }}
                 className="max-w-lg"
               >
-                <div className="p-6">
-                  <h2 className="text-2xl font-bold mb-6 text-center">Add New Address</h2>
+                <div className="p-4 sm:p-6 max-h-[85vh] overflow-y-auto">
+                  <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">Add New Address</h2>
 
                   <div className="space-y-4">
                     <div>
@@ -1129,7 +1129,7 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="state">State <span className="text-red-500">*</span></Label>
                         <select
@@ -1184,7 +1184,7 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="country">Country</Label>
                         <Input
@@ -1262,14 +1262,16 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
               </Modal>
             </CardContent>
           </Card>
+        </div>
 
-          <Card className="mt-5">
+        <div className="order-3 lg:order-3 lg:col-span-6">
+          <Card>
             <CardHeader>
               <CardTitle>Company Bank Details</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className='grid grid-cols-12'>
-                <div className="lg:col-span-9 ">
+              <div className='grid grid-cols-1 lg:grid-cols-12 gap-4'>
+                <div className="lg:col-span-9 overflow-x-auto text-sm sm:text-base">
                   <table width={"100%"} border={1}>
                     <tr>
                       <th className="text-left">Account Holder</th>
@@ -1295,15 +1297,15 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                 </div>
 
                 <div className="lg:col-span-3">
-                  <img src={`${process.env.NEXT_PUBLIC_API_URL}/uploads/docs/bank.png`} alt="Bank Details" className="w-full h-auto" />
+                  <img src={`${process.env.NEXT_PUBLIC_API_URL}/uploads/docs/bank.png`} alt="Bank Details" className="w-full max-w-xs mx-auto lg:max-w-none h-auto" />
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="lg:col-span-4">
-          <Card className="sticky top-6">
+        <div className="order-1 lg:order-2 lg:col-span-4 lg:row-span-2">
+          <Card className="lg:sticky lg:top-6">
             <CardHeader>
               <CardTitle>Order Summary</CardTitle>
             </CardHeader>
@@ -1311,8 +1313,8 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
                 {cartItems.map((item) => (
                   <div key={item.id} className="p-4 border-b border-gray-100 last:border-b-0 dark:border-gray-800">
-                    <div className="flex items-center gap-3">
-                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                    <div className="flex items-start gap-3">
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                         <Image
                           src={item.f_image || item.product?.f_image || '/placeholder.png'}
                           alt={item.product_name || item.product?.name || 'Product'}
@@ -1322,18 +1324,18 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-900 truncate dark:text-white mb-1">
+                        <h4 className="font-medium text-gray-900 line-clamp-2 dark:text-white mb-1">
                           {item.product_name || item.product?.name}
                         </h4>
+                        <div className="flex gap-1 flex-wrap">
+                          {item?.variant_details?.attributes?.map((attr: any, index: number) => (
+                            <Badge size="sm" variant="light" color="primary" key={index}>
+                              {attr.attribute_name}: {attr.value}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                      <div className="flex gap-1 flex-wrap">
-                        {item?.variant_details?.attributes?.map((attr: any, index: number) => (
-                          <Badge size="sm" variant="light" color="primary" key={index}>
-                            {attr.attribute_name}: {attr.value}
-                          </Badge>
-                        ))}
-                      </div>
-                      <div className="text-right">
+                      <div className="text-right shrink-0">
                         <p className="text-sm font-bold">{currency}{formattedAmount(item.price)}</p>
                         <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
                         <p className="font-bold text-lg text-gray-600">

@@ -59,16 +59,16 @@ const CheckoutPage = () => {
   return (
     <>
       <AppHeaderLogout />
-      <div className="bg-gray-50 dark:bg-gray-900 p-4 lg:p-8 min-h-screen">
+      <div className="bg-gray-50 dark:bg-gray-900 p-3 sm:p-4 lg:p-8 min-h-screen">
         <div className="max-w-7xl mx-auto">
-          <div className="mb-8">
+          <div className="mb-5 sm:mb-8">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-3 bg-brand-500/10 dark:bg-brand-500/20 rounded-xl">
-                <ShoppingCart className="w-8 h-8 text-brand-500" />
+              <div className="p-2 sm:p-3 bg-brand-500/10 dark:bg-brand-500/20 rounded-xl">
+                <ShoppingCart className="w-6 h-6 sm:w-8 sm:h-8 text-brand-500" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Checkout</h1>
-                <p className="text-gray-500 dark:text-gray-400">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">Checkout</h1>
+                <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
                   Review your order - {totalItems === 0 ? 'No items' : `${totalItems} item${totalItems > 1 ? 's' : ''}`}
                 </p>
               </div>

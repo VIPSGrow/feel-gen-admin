@@ -42,6 +42,19 @@ const KYCPage = () => {
     profileImage: useRef<HTMLInputElement>(null),
     gstin: useRef<HTMLInputElement>(null),
   }).current;
+  const cameraInputRefs = useRef({
+    aadhaarFront: useRef<HTMLInputElement>(null),
+    aadhaarBack: useRef<HTMLInputElement>(null),
+    pan: useRef<HTMLInputElement>(null),
+    bankPassbook: useRef<HTMLInputElement>(null),
+    profileImage: useRef<HTMLInputElement>(null),
+    gstin: useRef<HTMLInputElement>(null),
+  }).current;
+  const [isMobile, setIsMobile] = useState(false);
+  const [sheetKey, setSheetKey] = useState<keyof typeof cameraInputRefs | null>(null);
+  useEffect(() => {
+    setIsMobile(window.matchMedia('(pointer: coarse)').matches);
+  }, []);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
   const router = useRouter();
   const { updateUserProfile, user, logout } = useAuth();
@@ -433,13 +446,26 @@ const KYCPage = () => {
 
                         }}
                         className="hidden"
-                        required={required}
+                        required={required && !files[key]}
                       />
+                      {isMobile && (
+                        <input
+                          ref={cameraInputRefs[key]}
+                          type="file"
+                          accept="image/*"
+                          capture={key === 'profileImage' ? 'user' : 'environment'}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFileChange(key, file);
+                          }}
+                          className="hidden"
+                        />
+                      )}
                       <Button
                         type="button"
                         variant="outline"
                         className="w-full justify-start text-sm h-11"
-                        onClick={() => triggerFileInput(key)}
+                        onClick={() => (isMobile ? setSheetKey(key) : triggerFileInput(key))}
                       >
                         {files[key]?.name || `Choose ${label.toLowerCase()}`}
                       </Button>
@@ -490,6 +516,46 @@ const KYCPage = () => {
                 {loading || isPending ? 'Uploading KYC Documents...' : 'Upload KYC Documents'}
               </Button>}
           </form>
+
+          {sheetKey && (
+            <div className="fixed inset-0 z-[99999] flex items-end bg-black/50" onClick={() => setSheetKey(null)}>
+              <div
+                className="w-full rounded-t-2xl bg-white p-4 pb-8 space-y-2 dark:bg-gray-900"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-gray-300" />
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    className="flex flex-col items-center gap-1 rounded-lg border p-5 text-sm font-medium"
+                    onClick={() => {
+                      cameraInputRefs[sheetKey]?.current?.click();
+                      setSheetKey(null);
+                    }}
+                  >
+                    📷 Camera
+                  </button>
+                  <button
+                    type="button"
+                    className="flex flex-col items-center gap-1 rounded-lg border p-5 text-sm font-medium"
+                    onClick={() => {
+                      triggerFileInput(sheetKey);
+                      setSheetKey(null);
+                    }}
+                  >
+                    🖼️ Gallery
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className="w-full rounded-lg p-3 text-center text-sm text-gray-500"
+                  onClick={() => setSheetKey(null)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
