@@ -20,6 +20,7 @@ import {
 
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
+import ReviewsSection from "@/components/product/ReviewsSection";
 import serverCallFuction, {
   formattedAmount,
   getCurrencyIcon,
@@ -74,6 +75,8 @@ interface ProductData {
     total_reviews?: number;
     total_stock?: number;
     description?: string;
+    short_desc?: string;
+    specifications?: Record<string, any> | string | null;
   };
   variants: VariantType[];
   product_attributes?: Array<{
@@ -102,6 +105,28 @@ const ShopProductDetails: React.FC = () => {
   const [mainImageIndex, setMainImageIndex] = useState(0);
   const [addedToCart, setAddedToCart] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [activeTab, setActiveTab] = useState<
+    "description" | "specifications" | "reviews"
+  >("description");
+
+  const specEntries = useMemo<[string, string][]>(() => {
+    const raw = product?.product.specifications;
+    if (!raw) return [];
+    try {
+      const data = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (Array.isArray(data)) {
+        return data
+          .filter((i: any) => i?.name)
+          .map((i: any) => [String(i.name), String(i.value ?? "")]);
+      }
+      if (data && typeof data === "object") {
+        return Object.entries(data).map(([k, v]) => [k, String(v)]);
+      }
+    } catch {
+      /* ignore malformed specs */
+    }
+    return [];
+  }, [product]);
 
   // --- Fetch product by slug ---
   const fetchProduct = useCallback(async () => {
@@ -109,9 +134,11 @@ const ShopProductDetails: React.FC = () => {
     try {
       setLoading(true);
       const res = await serverCallFuction("GET", "api/products/getDproducts");
+
       if (res && (res as any).success !== false) {
         const data: ProductData[] = (res as any).data || res;
         const found = data.find((p) => p.product.slug === slug);
+        console.log("Fetch product response:", found);
         if (found) {
           setProduct(found);
           const defaultAttrs: { [key: number]: number } = {};
@@ -388,7 +415,7 @@ const ShopProductDetails: React.FC = () => {
               </div>
 
               {/* Wishlist / Share */}
-              <div className="absolute top-4 right-4 flex gap-2">
+              {/* <div className="absolute top-4 right-4 flex gap-2">
                 <button
                   className="w-10 h-10 bg-white dark:bg-gray-700 rounded-full shadow-md flex items-center justify-center text-gray-500 hover:text-red-500 transition-colors"
                   title="Add to Wishlist"
@@ -401,7 +428,7 @@ const ShopProductDetails: React.FC = () => {
                 >
                   <Share2 size={18} />
                 </button>
-              </div>
+              </div> */}
             </div>
 
             {/* Thumbnails */}
@@ -483,7 +510,7 @@ const ShopProductDetails: React.FC = () => {
             </div>
 
             {/* HSN Code */}
-            {product.product.hsn_code && (
+            {/* {product.product.hsn_code && (
               <div className="mb-6">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                   HSN Code
@@ -492,7 +519,7 @@ const ShopProductDetails: React.FC = () => {
                   {product.product.hsn_code}
                 </p>
               </div>
-            )}
+            )} */}
 
             {/* Stock Status */}
             <div className="mb-6">
@@ -511,18 +538,17 @@ const ShopProductDetails: React.FC = () => {
             </div>
 
             {/* Description */}
-            {product.product.description && (
+            {product.product.short_desc && (
               <div className="mb-6">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                   Description
                 </span>
                 <div
                   className="prose dark:prose-invert max-w-none text-sm text-gray-600 dark:text-gray-400 mt-1.5 leading-relaxed"
-                  dangerouslySetInnerHTML={renderHTML(product.product.description)}
+                  dangerouslySetInnerHTML={renderHTML(product.product.short_desc)}
                 />
               </div>
             )}
-            
 
             {/* Attributes / Variants */}
             {hasAttributes && product.product_attributes?.map((attr) => {
@@ -632,13 +658,13 @@ const ShopProductDetails: React.FC = () => {
                     : "Add to Cart"}
                 </Button>
 
-                <button
+                {/* <button
                   className="px-6 h-12 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 font-medium"
                   title="Add to Wishlist"
                 >
                   <Heart size={18} />
                   <span className="hidden sm:inline">Wishlist</span>
-                </button>
+                </button> */}
               </div>
             </div>
 
@@ -659,6 +685,61 @@ const ShopProductDetails: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* --- Description / Specifications Section --- */}
+      <div className="max-w-7xl mx-auto mt-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
+        <div className="flex border-b border-gray-200 dark:border-gray-700">
+          {(["description", "specifications", "reviews"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-sm font-semibold capitalize border-b-2 -mb-px transition-colors ${
+                activeTab === tab
+                  ? "border-brand-500 text-brand-500"
+                  : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "description" ? (
+          product.product.description ? (
+            <div
+              className="prose dark:prose-invert max-w-none text-sm text-gray-600 dark:text-gray-400 mt-4 leading-relaxed"
+              dangerouslySetInnerHTML={renderHTML(product.product.description)}
+            />
+          ) : (
+            <p className="text-sm text-gray-400 mt-4">No description available.</p>
+          )
+        ) : activeTab === "specifications" ? (
+          specEntries.length > 0 ? (
+            <table className="w-full mt-4 text-sm">
+              <tbody>
+                {specEntries.map(([name, value]) => (
+                  <tr
+                    key={name}
+                    className="border-b border-gray-100 dark:border-gray-700 align-top"
+                  >
+                    <td className="py-2 pr-4 w-1/3 font-medium text-gray-700 dark:text-gray-300">
+                      {name}
+                    </td>
+                    <td className="py-2 text-gray-600 dark:text-gray-400">{value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="text-sm text-gray-400 mt-4">No specifications available.</p>
+          )
+        ) : (
+          <div className="mt-4">
+            <ReviewsSection productId={product.product.id} />
+          </div>
+        )}
       </div>
 
       {/* --- Fixed Bottom Cart Summary --- */}

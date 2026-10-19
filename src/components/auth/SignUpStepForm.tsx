@@ -54,6 +54,7 @@ export default function SignUpStepForm() {
         bankName: '', // 2]
         accountHolderName: '', // 0]
         accountNo: '', // 0]
+        confirmAccountNo: '',
         ifscCode: '', // 1]
         branch: '', // 1]
 
@@ -307,6 +308,11 @@ export default function SignUpStepForm() {
         if (step === 3) {
             if (!formData.accountHolderName) newErrors.accountHolderName = "Name is required";
             if (formData.accountNo.length < 9) newErrors.accountNo = "Account number is too short";
+            if (!formData.confirmAccountNo) {
+                newErrors.confirmAccountNo = "Please confirm your account number";
+            } else if (formData.accountNo !== formData.confirmAccountNo) {
+                newErrors.confirmAccountNo = "Account numbers do not match";
+            }
             if (!ifscRegex.test(formData.ifscCode.toUpperCase())) newErrors.ifscCode = "Invalid IFSC code";
         }
 
@@ -395,11 +401,14 @@ export default function SignUpStepForm() {
         setIsSubmitting(true);
         try {
             console.log("register data - ", formData);
+            const registrationData = Object.fromEntries(
+                Object.entries(formData).filter(([field]) => field !== 'confirmAccountNo')
+            );
 
             const response = await serverCallFuction(
                 'POST',
                 'api/users/create',
-                formData
+                registrationData
             );
 
             if (response.status == true) {
@@ -461,6 +470,9 @@ export default function SignUpStepForm() {
         setFieldErrors((prevErrors) => {
             const newErrors = { ...prevErrors };
             delete newErrors[field];
+            if (field === 'accountNo' || field === 'confirmAccountNo') {
+                delete newErrors.confirmAccountNo;
+            }
             return newErrors;
         });
         // }
@@ -830,6 +842,20 @@ export default function SignUpStepForm() {
                             inputMode='numeric'
                             error={!!fieldErrors.accountNo}
                             hint={fieldErrors.accountNo}
+                        />
+                        <Label>Confirm Account Number*</Label>
+                        <Input
+                            placeholder="Re-enter Account Number"
+                            value={formData.confirmAccountNo || ""}
+                            onChange={(e) => {
+                                const value = e.target.value.replace(/\D/g, "");
+                                if (value === "" || /^[0-9]/.test(value)) {
+                                    handleFieldChange('confirmAccountNo', value);
+                                }
+                            }}
+                            inputMode="numeric"
+                            error={!!fieldErrors.confirmAccountNo}
+                            hint={fieldErrors.confirmAccountNo}
                         />
                         <div className="grid grid-cols-2 gap-4">
                             <div>
