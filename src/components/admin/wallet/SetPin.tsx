@@ -62,24 +62,27 @@ const SetPin = () => {
     if (user && !user.transaction_pin_hash) {
         return (
             <>
-                <div className="mb-6 ">
-                    <div className="flex items-center justify-between p-4 border border-warning-200 bg-warning-50 dark:bg-warning-200 rounded-lg">
-                        <div className="flex items-center gap-3">
-                            <Badge color="warning" variant="solid">Action Required</Badge>
-                            <p className="text-sm text-warning-800 font-medium">
-                                Your transaction PIN is not set. Secure your account to start transacting.
-                            </p>
-                        </div>
-                        <Badge
-                            color="success"
-                            variant="solid"
-                            className="cursor-pointer hover:bg-success-100 p-2 rounded"
-                            onClick={() => setShowPinModal(true)}
-                        >
-                            Set PIN Now
-                        </Badge>
-                    </div>
-                </div>
+                <div className="mb-6">
+  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border border-warning-200 bg-warning-50 dark:bg-warning-200 rounded-lg">
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+      <Badge color="warning" variant="solid" className="w-fit shrink-0">
+        Action Required
+      </Badge>
+      <p className="text-sm text-warning-800 font-medium">
+        Your transaction PIN is not set. Secure your account to start transacting.
+      </p>
+    </div>
+
+    <Badge
+      color="success"
+      variant="solid"
+      className="cursor-pointer hover:bg-success-100 p-2 rounded text-center w-full sm:w-auto shrink-0 transition-colors"
+      onClick={() => setShowPinModal(true)}
+    >
+      Set PIN Now
+    </Badge>
+  </div>
+</div>
                 <Modal isOpen={showPinModal} onClose={() => {
                     setShowPinModal(false);
                     setPin('');

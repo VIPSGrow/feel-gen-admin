@@ -17,6 +17,7 @@ export interface User {
   panNo?: string;
   whatsappNo?: string;
   address?: string;
+  district?: string;
   city?: string;
   state?: string;
   pin?: string;
@@ -191,4 +192,3 @@ export function hasPermission(userRole: string | null, permission: string): bool
 
   return perms.includes('*') || perms.includes(permission);
 }
-

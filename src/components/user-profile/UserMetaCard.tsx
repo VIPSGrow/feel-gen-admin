@@ -30,6 +30,7 @@ export default function UserMetaCard() {
     dob: user?.dob ? new Date(user.dob).toISOString().split('T')[0] : "",
     gender: user?.gender || "",
     address: user?.address || "",
+    district: user?.district || "",
     city: user?.city || "",
     state: user?.state || "",
     pin: user?.pin || "",
@@ -56,6 +57,7 @@ export default function UserMetaCard() {
         dob: user.dob ? new Date(user.dob).toISOString().split('T')[0] : "",
         gender: user.gender || "",
         address: user.address || "",
+        district: user.district || "",
         city: user.city || "",
         state: user.state || "",
         pin: user.pin || "",
@@ -147,6 +149,7 @@ export default function UserMetaCard() {
         dob: formData.dob ? new Date(formData.dob).toISOString() : null,
         gender: formData.gender,
         address: formData.address,
+        district: formData.district,
         city: formData.city,
         state: formData.state,
         pin: formData.pin,
@@ -179,6 +182,7 @@ export default function UserMetaCard() {
           aadhaarNo: payload.aadhaar_no,
           panNo: payload.pan_no,
           address: payload.address,
+          district: payload.district,
           city: payload.city,
           state: payload.state,
           pin: payload.pin,
@@ -354,6 +358,10 @@ export default function UserMetaCard() {
                   <div className="col-span-2">
                     <Label>Address</Label>
                     <Input name="address" value={formData.address} onChange={handleInputChange} />
+                  </div>
+                  <div>
+                    <Label>District</Label>
+                    <Input name="district" value={formData.district} onChange={handleInputChange} />
                   </div>
                   <div>
                     <Label>City</Label>

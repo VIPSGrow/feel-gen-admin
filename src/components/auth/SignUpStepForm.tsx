@@ -44,6 +44,7 @@ export default function SignUpStepForm() {
         whatsappNo: '', // 2]
         phone: '',
         address: '', // 0]
+        district: '',
         city: '', // 1]
         state: '', // 5]
         pin: '', // 6]
@@ -714,7 +715,7 @@ export default function SignUpStepForm() {
                                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                                 />
                             </div>
-                            <div className="grid grid-cols-3 gap-2 md:col-span-2">
+                            <div className="grid grid-cols-2 gap-2 md:col-span-2 md:grid-cols-4">
                                 <div>
                                     <Label>State* </Label>
                                     <select
@@ -735,6 +736,16 @@ export default function SignUpStepForm() {
                                         )}
                                     </select>
                                 </div>
+
+                                <div>
+                                    <Label>District</Label>
+                                    <Input
+                                        value={formData.district}
+                                        placeholder="Enter district"
+                                        onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+                                    />
+                                </div>
+
                                 <div>
                                     <Label>City* </Label>
                                     <select

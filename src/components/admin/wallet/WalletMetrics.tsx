@@ -96,8 +96,8 @@ const WalletMetrics = ({ cols = 2 }) => {
                 </div>
                 <div className="flex items-end justify-between mt-5">
                     <div>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Total Transactions</span>
-                        <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white">{walletData?.total_transactions}</h4>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Lifetime Commission</span>
+                        <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white">₹{formattedAmount(Number(walletData?.lifetime_commission || 0))}</h4>
                     </div>
                     {/* <Badge color="success">+11%</Badge> */}
                 </div>

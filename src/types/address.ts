@@ -6,6 +6,7 @@ export interface Address {
   phone: string;
   address_line1: string;
   address_line2: string;
+  district?: string | null;
   city: string;
   state: string;
   country: string;
@@ -21,6 +22,7 @@ export interface CreateAddressPayload {
   phone: string;
   address_line1: string;
   address_line2: string;
+  district?: string;
   city: string;
   state: string;
   country?: string;
@@ -33,5 +35,3 @@ export interface CreateAddressPayload {
   // Used by checkout modal state select
   stateId?: number;
 }
-
-

@@ -7,6 +7,7 @@ import Badge from '@/components/ui/badge/Badge';
 import Button from '@/components/ui/button/Button';
 import Input from '@/components/form/input/InputField';
 import Label from '@/components/form/Label';
+import Checkbox from '@/components/form/input/Checkbox';
 import Pagination from '@/components/tables/Pagination';
 import { Pencil, Trash2, Plus, RefreshCcw } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
@@ -27,6 +28,10 @@ interface Coupon {
   product_names?: string[];
   applicable_users?: string[];
   status: 'active' | 'inactive';
+  show_on_website?: boolean;
+  display_title?: string;
+  display_description?: string;
+  display_order?: number;
   created_at?: string;
 }
 
@@ -42,8 +47,20 @@ interface FormData {
   applicable_products: string[];
   applicable_users: string[];
   status: 'active' | 'inactive';
+  show_on_website: boolean;
+  display_title: string;
+  display_description: string;
+  display_order: number;
   product_names: string[];
 }
+
+const toDateInput = (value?: string) => {
+  if (!value) return '';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
 
 const CouponsPage: React.FC = () => {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -71,6 +88,10 @@ const CouponsPage: React.FC = () => {
     applicable_products: [],
     applicable_users: [],
     status: 'active',
+    show_on_website: false,
+    display_title: '',
+    display_description: '',
+    display_order: 0,
     product_names: []
   });
 
@@ -90,6 +111,10 @@ const CouponsPage: React.FC = () => {
       applicable_products: [],
       applicable_users: [],
       status: 'active',
+      show_on_website: false,
+      display_title: '',
+      display_description: '',
+      display_order: 0,
       product_names: []
     });
     setEditingCoupon(null);
@@ -168,11 +193,17 @@ const CouponsPage: React.FC = () => {
 
     setFormData({
       ...coupon,
+      valid_from: toDateInput(coupon.valid_from),
+      expires_at: toDateInput(coupon.expires_at),
       min_order_amount: coupon.min_order_amount || 0,
       max_discount_amount: coupon.max_discount_amount || 0,
       usage_limit: coupon.usage_limit || 0,
       applicable_products: applicable,
       applicable_users: normalizeIdArray(coupon.applicable_users as unknown),
+      show_on_website: !!coupon.show_on_website,
+      display_title: coupon.display_title || '',
+      display_description: coupon.display_description || '',
+      display_order: coupon.display_order || 0,
       product_names: coupon.product_names || []
     });
 
@@ -487,6 +518,45 @@ const CouponsPage: React.FC = () => {
                       onChange={(e) => setFormData({ ...formData, usage_limit: Number(e.target.value) })}
                     />
                   </div>
+                  <div className="md:col-span-2">
+                    <Checkbox
+                      id="show_on_website"
+                      label="Show on website (checkout page)"
+                      checked={!!formData.show_on_website}
+                      onChange={(checked) => setFormData({ ...formData, show_on_website: checked })}
+                    />
+                  </div>
+                  {formData.show_on_website && (
+                    <>
+                      <div>
+                        <Label htmlFor="display_title">Display Title</Label>
+                        <Input
+                          id="display_title"
+                          defaultValue={formData.display_title}
+                          onChange={(e) => setFormData({ ...formData, display_title: e.target.value })}
+                          placeholder="Flat 10% off"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="display_order">Display Order</Label>
+                        <Input
+                          id="display_order"
+                          type="number"
+                          defaultValue={formData.display_order}
+                          onChange={(e) => setFormData({ ...formData, display_order: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <Label htmlFor="display_description">Display Description</Label>
+                        <Input
+                          id="display_description"
+                          defaultValue={formData.display_description}
+                          onChange={(e) => setFormData({ ...formData, display_description: e.target.value })}
+                          placeholder="On orders above ₹999"
+                        />
+                      </div>
+                    </>
+                  )}
                   <div>
                     <Label htmlFor="valid_from">Valid From *</Label>
                     <Input

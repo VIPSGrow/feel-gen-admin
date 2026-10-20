@@ -38,8 +38,8 @@ const TreeConnector = () => {
 
     const [selectedNode, setSelectedNode] = React.useState<TreeUser | null>(null);
 
-    const distributorLevel = treeData[0]?.level_name
-        ? getRankLevel(treeData[0].level_name)
+    const distributorLevel = treeData[0]?.rank_name
+        ? getRankLevel(treeData[0].rank_name)
         : 3;
 
     const { loading: showLoadingToast, error, update } = useToast();
@@ -180,7 +180,7 @@ const TreeConnector = () => {
                                             </div>
                                         </div>
                                         <p className="text-3xl font-mono font-bold text-brand-600 mb-6 tracking-tight">Ph.: {selectedNode.phone}
-                                            <span className='text-lg'> ( {selectedNode.team_size === 0 ? 'Sakhi' : selectedNode.level_name} )</span>
+                                            <span className='text-lg'> ( {selectedNode.rank_name} )</span>
                                         </p>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             {/* <div>

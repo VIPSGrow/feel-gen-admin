@@ -9,7 +9,7 @@ export interface TreeUser {
   referrer:ReferrerUser;
   referral_code: string;
   kyc_status:boolean;
-  level_name: string;
+  rank_name: string;
   team_size: number;
   created_at: string;
   children: TreeUser[];

@@ -78,6 +78,7 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
     phone: '',
     address_line1: '',
     address_line2: '',
+    district: '',
     city: '',
     state: '',
     country: '',
@@ -132,6 +133,7 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
       phone: '',
       address_line1: '',
       address_line2: '',
+      district: '',
       city: '',
       state: '',
       country: '',
@@ -803,7 +805,7 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                               {address.address_line2 && ', ' + address.address_line2}
                             </p>
                             <p className="text-sm font-medium text-gray-500">
-                              {address.city}, {address.state} - {address.pincode}
+                              {[address.district, address.city, address.state].filter(Boolean).join(', ')} - {address.pincode}
                             </p>
                             <p className="text-xs text-brand-600 mt-2 font-semibold">📞 {address.phone}</p>
                           </Label>
@@ -1126,6 +1128,16 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                         defaultValue={addAddressForm.address_line2}
                         onChange={handleAddAddressChange}
                         placeholder="eg.: Street etc"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="district">District</Label>
+                      <Input
+                        id="district"
+                        name="district"
+                        value={addAddressForm.district}
+                        onChange={handleAddAddressChange}
                       />
                     </div>
 

@@ -21,6 +21,7 @@ export default function UserAddressCard() {
     phone: '',
     address_line1: '',
     address_line2: '',
+    district: '',
     city: '',
     state: '',
     country: '',
@@ -56,6 +57,7 @@ export default function UserAddressCard() {
       phone: '',
       address_line1: '',
       address_line2: '',
+      district: '',
       city: '',
       state: '',
       country: '',
@@ -200,6 +202,7 @@ export default function UserAddressCard() {
       phone: address.phone,
       address_line1: address.address_line1,
       address_line2: address.address_line2,
+      district: address.district || '',
       city: address.city,
       state: address.state,
       country: address.country,
@@ -235,7 +238,7 @@ export default function UserAddressCard() {
             </h4>
             {!hasAddresses && user?.address && (
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Primary: {user.address}, {user.city || 'N/A'}, {user.pin || 'N/A'}
+                Primary: {user.address}, {[user.district, user.city].filter(Boolean).join(', ') || 'N/A'}, {user.pin || 'N/A'}
               </p>
             )}
             <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -254,7 +257,9 @@ export default function UserAddressCard() {
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">📞 {address.phone}</p>
                       <p className="text-sm font-medium text-gray-900 dark:text-white">{address.address_line1}</p>
                       {address.address_line2 && <p className="text-sm text-gray-600 dark:text-gray-400">{address.address_line2}</p>}
-                      <p className="text-xs text-gray-500 mt-1">{address.city}, {address.state} - {address.pincode}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {[address.district, address.city, address.state].filter(Boolean).join(', ')} - {address.pincode}
+                      </p>
                     </div>
                     <div className="flex gap-1 shrink-0">
                       <button
@@ -356,6 +361,16 @@ export default function UserAddressCard() {
                   value={formData.address_line2}
                   onChange={handleInputChange}
                   placeholder="eg.: Street etc"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="district">District</Label>
+                <Input
+                  id="district"
+                  name="district"
+                  value={formData.district}
+                  onChange={handleInputChange}
                 />
               </div>
 
@@ -497,4 +512,3 @@ export default function UserAddressCard() {
     </>
   );
 }
-

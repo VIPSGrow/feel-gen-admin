@@ -241,7 +241,16 @@ export interface DistributorCharts {
   daily_transactions: DailyTransaction[];
 }
 
+export interface RepurchaseReminder {
+  id: number;
+  last_purchase_at: string;
+  due_date: string;
+  is_overdue: boolean;
+  days_left: number;
+}
+
 export interface DistributorDashboardData {
+  repurchase_reminder?: RepurchaseReminder | null;
   profile: DistributorProfile;
   wallet: DistributorWallet;
   orders: DistributorOrders;

@@ -7,6 +7,7 @@ import type { DistributorDashboardData } from "@/types/dashboard";
 import type { MlmPlanResponse } from "@/types/mlm-plan";
 import serverCallFuction from "@/lib/constantFunction";
 import { useRouter } from "next/navigation";
+import RepurchaseReminderModal from "./RepurchaseReminderModal";
 
 const DEFAULT_RANK_NAMES: Record<number, string> = {
   0: "Direct Partner",
@@ -104,6 +105,7 @@ export const DistributorDashboard = ({ data, loading }: DistributorDashboardProp
 
     return (
         <div className="space-y-6">
+            <RepurchaseReminderModal reminder={data?.repurchase_reminder} />
             {/* Profile Card */}
             <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
                 <div className="flex items-center gap-4">
@@ -179,7 +181,7 @@ export const DistributorDashboard = ({ data, loading }: DistributorDashboardProp
                 </div>
             </div>
 
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 md:p-6">
+            {/* <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 md:p-6">
                 <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Commission Summary</h3>
                     <button onClick={() => router.push('/transactions')} className="text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">
@@ -218,7 +220,7 @@ export const DistributorDashboard = ({ data, loading }: DistributorDashboardProp
                         <p className="mt-1 font-semibold text-error-700 dark:text-error-300">₹{formatAmount(data?.transactions?.tds_deductions || data?.wallet?.tds_deductions)}</p>
                     </div>
                 </div>
-            </div>
+            </div> */}
 
             {/* Orders & Transactions */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6">

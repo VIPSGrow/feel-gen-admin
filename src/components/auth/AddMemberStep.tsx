@@ -50,6 +50,7 @@ export default function AddMemberStep() {
         whatsappNo: '',
         phone: '',
         address: '',
+        district: '',
         city: '',
         state: '',
         pin: '',
@@ -635,7 +636,7 @@ export default function AddMemberStep() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-3 gap-2 md:col-span-2">
+                            <div className="grid grid-cols-2 gap-2 md:col-span-2 md:grid-cols-4">
                                 <div>
                                     <Label>State* </Label>
                                     <select
@@ -655,6 +656,15 @@ export default function AddMemberStep() {
                                             ))
                                         )}
                                     </select>
+                                </div>
+
+                                <div>
+                                    <Label>District</Label>
+                                    <Input
+                                        value={formData.district}
+                                        placeholder="Enter district"
+                                        onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+                                    />
                                 </div>
 
                                 <div>
