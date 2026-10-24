@@ -1,13 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ResponsiveTable, Column } from '@/components/tables/ResponsiveTable';
 import Badge from "@/components/ui/badge/Badge";
 import Avatar from "@/components/ui/avatar/Avatar";
 import { Pencil, Plus, Trash2, Eye, Network, File } from "lucide-react";
@@ -202,6 +196,60 @@ const MembersPage = () => {
     }
   };
 
+  const memberColumns: Column<Member>[] = [
+    {
+      header: 'Member',
+      cell: (m) => (
+        <div className="flex items-center gap-3">
+          <Avatar src={m.image || '/images/user/user-01.jpg'} size="medium" alt={m.name} />
+          <span className="font-medium text-gray-800 dark:text-white">{m.name}</span>
+        </div>
+      ),
+    },
+    { header: 'Email', cell: (m) => m.email },
+    { header: 'Phone', cell: (m) => m.phone || 'N/A' },
+    { header: 'Level', cell: (m) => `Level ${m.level}` },
+    {
+      header: 'Status',
+      cell: (m) => (
+        <Badge size="sm" color={getStatusColor(m.status)}>
+          {m.status}
+        </Badge>
+      ),
+    },
+    { header: 'Join Date', cell: (m) => new Date(m.created_at).toLocaleDateString() },
+    { header: 'Referrals', cell: (m) => m.referrals_count || 0 },
+    {
+      header: 'Actions',
+      cell: (m) => (
+        <div className="flex items-center gap-2 justify-center">
+          <Button variant="outline" size="sm" onClick={() => router.push('/network-tree?selectd_id=' + m.id)}>
+            <Network className="w-4 h-4" />
+          </Button>
+          {isSuperAdmin && (
+            <Button variant="outline" size="sm" onClick={() => openEdit(m)}>
+              <Pencil className="w-4 h-4" />
+            </Button>
+          )}
+          {isSuperAdmin ? (
+            <Button variant="outline" size="sm" onClick={() => openKycEdit(m)}>
+              <File className="w-4 h-4" />
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => router.push('/network-tree?selectd_id=' + m.id)}>
+              <File className="w-4 h-4" />
+            </Button>
+          )}
+          {isSuperAdmin && (
+            <Button variant="outline" size="sm" onClick={() => handleDelete(m.id)} className="text-red-500 hover:text-red-700">
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
   if (loading) return <div className="p-6">Loading members...</div>;
 
   return (
@@ -283,113 +331,13 @@ const MembersPage = () => {
       )}
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-gray-900">
-        <div className="max-w-full overflow-x-auto">
-          <div className="min-w-[1200px]">
-            <Table>
-              <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                <TableRow>
-                  <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Member</TableCell>
-                  <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Email</TableCell>
-                  <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Phone</TableCell>
-                  <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Level</TableCell>
-                  <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Status</TableCell>
-                  <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Join Date</TableCell>
-                  <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Referrals</TableCell>
-                  <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Actions</TableCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                {filteredMembers.length > 0 ? (
-                  filteredMembers.map((member) => (
-                    <TableRow key={member.id}>
-                      <TableCell className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <Avatar
-                            src={member.image || '/images/user/user-01.jpg'}
-                            size="medium"
-                            alt={member.name}
-                          />
-                          <div>
-                            <span className="block font-medium text-gray-800 dark:text-white">
-                              {member.name}
-                            </span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">{member.email}</TableCell>
-                      <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">{member.phone || 'N/A'}</TableCell>
-                      <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">Level {member.level}</TableCell>
-                      <TableCell>
-                        <Badge size="sm" color={getStatusColor(member.status)}>
-                          {member.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                        {new Date(member.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                        {member.referrals_count || 0}
-                      </TableCell>
-                      <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                        <div className="flex items-center gap-2 justify-center">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => router.push("/network-tree?selectd_id=" + member.id)}
-                          >
-                            <Network className="w-4 h-4" />
-                          </Button>
-                          {isSuperAdmin &&
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openEdit(member)}
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </Button>}
-                          {isSuperAdmin ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openKycEdit(member)}
-                            >
-                              <File className="w-4 h-4" />
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => router.push("/network-tree?selectd_id=" + member.id)}
-                            >
-                              <File className="w-4 h-4" />
-                            </Button>
-                          )}
-                          {isSuperAdmin &&
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDelete(member.id)}
-                              className="text-red-500 hover:text-red-700"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          }
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                      {searchTerm ? "No members found matching search." : "No members found."}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+      <div className="overflow-hidden rounded-xl ">
+        <ResponsiveTable<Member>
+          columns={memberColumns}
+          data={filteredMembers}
+          keyExtractor={(m) => m.id}
+          emptyText={searchTerm ? 'No members found matching search.' : 'No members found.'}
+        />
       </div>
 
       {/* Add/Edit Modal */}

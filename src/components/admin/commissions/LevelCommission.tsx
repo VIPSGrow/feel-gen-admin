@@ -7,13 +7,7 @@ import Input from '@/components/form/input/InputField';
 import { useModal } from '@/hooks/useModal';
 import { Modal } from '@/components/ui/modal';
 import { Plus, Pencil, Trash2, Save } from 'lucide-react';
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableCell,
-} from '@/components/ui/table/index';
+import { ResponsiveTable, Column } from '@/components/tables/ResponsiveTable';
 import type { LevelCommission } from '@/types/commission-type';
 import { useAuth } from '@/context/AuthContext';
 
@@ -130,6 +124,38 @@ const LevelCommissionComponent = () => {
     }
   };
 
+  const commissionColumns: Column<LevelCommission>[] = [
+    { header: 'Level No', cell: (c) => <span className="font-semibold text-gray-900 dark:text-white">{c.level_no}</span> },
+    {
+      header: 'Type',
+      cell: (c) => (
+        <Badge color="primary" variant="solid" size="sm">
+          {c.type}
+        </Badge>
+      ),
+    },
+    { header: 'Level Name', cell: (c) => <span className="font-semibold text-gray-900 dark:text-white">{c.level_name}</span> },
+    { header: 'Commission %', cell: (c) => <span className="font-semibold text-emerald-600">{c.commission_percentage}%</span> },
+    { header: 'Team Size Threshold', cell: (c) => c.team_size_threshold ?? '-' },
+    ...(hasPermission('commissions/add')
+      ? [
+          {
+            header: 'Actions',
+            cell: (c: LevelCommission) => (
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(c)} startIcon={<Pencil className="w-4 h-4" />}>
+                  {null}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => handleDelete(c.level_no, c.level_no)} startIcon={<Trash2 className="w-4 h-4" color="red" />}>
+                  {null}
+                </Button>
+              </div>
+            ),
+          } as Column<LevelCommission>,
+        ]
+      : []),
+  ];
+
   if (loading) return <div className="p-6 text-center">Loading...</div>;
 
   return (
@@ -152,59 +178,13 @@ const LevelCommissionComponent = () => {
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-        <div className="min-w-[800px] overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Level No</TableCell>
-                <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Type</TableCell>
-                <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Level Name</TableCell>
-                <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Commission %</TableCell>
-                <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Team Size Threshold</TableCell>
-                {hasPermission('commissions/add') &&
-                  <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-right">Actions</TableCell>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {commissions.map((commission, index) => (
-                <TableRow key={`${commission.type}-${commission.level_no}-${index}`}>
-                  <TableCell className="px-6 py-4 font-semibold text-gray-900 dark:text-white">{commission.level_no}</TableCell>
-                  <TableCell className="px-6 py-4">
-                    <Badge color="primary" variant="solid" size="sm">
-                      {commission.type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="px-6 py-4 font-semibold text-gray-900 dark:text-white">{commission.level_name}</TableCell>
-                  <TableCell className="px-6 py-4 font-semibold text-emerald-600">{commission.commission_percentage}%</TableCell>
-                  <TableCell className="px-6 py-4 font-semibold text-emerald-600">{commission.team_size_threshold ?? "-"}</TableCell>
-                  {hasPermission('commissions/add') &&
-                    <TableCell className="px-6 py-4 text-right">
-                      <div className="flex gap-2 justify-end">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenEdit(commission)}
-                          startIcon={<Pencil className="w-4 h-4" />}
-                        >
-                          {null}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(commission.level_no, commission.level_no)}
-                          startIcon={<Trash2 className="w-4 h-4" color='red' />}
-                        >
-                          {null}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  }
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+        <ResponsiveTable<LevelCommission>
+          columns={commissionColumns}
+          data={commissions}
+          keyExtractor={(c) => `${c.type}-${c.level_no}`}
+          emptyText="No commissions found."
+        />
       </div>
 
       {/* Modal */}

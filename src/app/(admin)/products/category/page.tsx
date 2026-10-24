@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import serverCallFuction from '@/lib/constantFunction';
 import { slugify } from '@/lib/slugify';
-import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
+import { ResponsiveTable, Column } from '@/components/tables/ResponsiveTable';
 import Button from '@/components/ui/button/Button';
 import Badge from '@/components/ui/badge/Badge';
 import Alert from '@/components/ui/alert/Alert';
@@ -188,6 +188,39 @@ const CategoryPage = () => {
     fetchCategories();
   }, []);
 
+  const categoryColumns: Column<Category>[] = [
+    {
+      header: 'Name',
+      cell: (c) => (
+        <div className="flex items-center">
+          <span style={{ paddingLeft: `${c.level! * 20}px` }}>
+            {c.parent_id && <ChevronRight className="h-4 w-4 inline mr-1" />}
+            {c.name}
+          </span>
+        </div>
+      ),
+    },
+    { header: 'Slug', cell: (c) => c.slug },
+    {
+      header: 'Status',
+      cell: (c) => (
+        <Badge color={c.status === 'active' ? 'success' : 'error'} variant="light" size="sm">
+          {c.status}
+        </Badge>
+      ),
+    },
+    { header: 'Created', cell: (c) => new Date(c.created_at).toLocaleDateString() },
+    {
+      header: 'Actions',
+      cell: (c) => (
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" startIcon={<Edit className="h-3 w-3" />} onClick={() => openEdit(c)} />
+          <Button variant="outline" size="sm" startIcon={<Trash2 className="h-3 w-3" color="red" />} onClick={() => handleDelete(c.id)} />
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -210,57 +243,13 @@ const CategoryPage = () => {
       {loading ? (
         <div>Loading...</div>
       ) : (
-        <div className="rounded-xl border bg-white dark:bg-gray-900 overflow-hidden">
-          <Table>
-            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-              <TableRow>
-                <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Name</TableCell>
-                <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Slug</TableCell>
-                <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Status</TableCell>
-                <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Created</TableCell>
-                <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Actions</TableCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {categories.map((cat) => (
-                <TableRow key={cat.id}>
-                  <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                    <div className="flex items-center">
-                      <span style={{ paddingLeft: `${cat.level! * 20}px` }}>
-                        {cat.parent_id && <ChevronRight className="h-4 w-4 inline mr-1" />}
-                        {cat.name}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">{cat.slug}</TableCell>
-                  <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                    <Badge color={cat.status === 'active' ? 'success' : 'error'} variant="light" size="sm">
-                      {cat.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">{new Date(cat.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        startIcon={<Edit className="h-3 w-3" />}
-                        onClick={() => openEdit(cat)}
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        startIcon={<Trash2 className="h-3 w-3" color='red' />}
-                        onClick={() => handleDelete(cat.id)}
-                      />
-
-
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="rounded-xl overflow-x-auto">
+          <ResponsiveTable<Category>
+            columns={categoryColumns}
+            data={categories}
+            keyExtractor={(c) => c.id}
+            emptyText="No categories found."
+          />
         </div>
       )}
 

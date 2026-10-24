@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useModal } from '@/hooks/useModal';
 import serverCallFuction, { date_formate } from '@/lib/constantFunction';
-import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
+import { ResponsiveTable, Column } from '@/components/tables/ResponsiveTable';
 import Badge from '@/components/ui/badge/Badge';
 import Button from '@/components/ui/button/Button';
 import Input from '@/components/form/input/InputField';
@@ -339,6 +339,50 @@ const CouponsPage: React.FC = () => {
   }, []);
 
 
+  const couponColumns: Column<Coupon>[] = [
+    { header: 'Code', cell: (c) => <span className="font-bold">{c.code}</span> },
+    {
+      header: 'Amount',
+      cell: (c) => (
+        <Badge color={c.discount_type === 'percentage' ? 'success' : 'error'} className="font-bold">
+          {c.discount_type === 'percentage' ? c.discount_amount + '%' : '₹' + c.discount_amount}
+        </Badge>
+      ),
+    },
+    { header: 'Min Order', cell: (c) => `₹${c.min_order_amount || 0}` },
+    { header: 'Usage Limit', cell: (c) => c.usage_limit || 'Unlimited' },
+    { header: 'Products', cell: (c) => c.product_names?.join(', ') || 'All' },
+    { header: 'Valid From', cell: (c) => date_formate(c.valid_from) },
+    { header: 'Expires', cell: (c) => date_formate(c.expires_at) },
+    {
+      header: 'Status',
+      cell: (c) => (
+        <Badge variant="solid" color={c.status === 'active' ? 'success' : 'error'}>
+          {c.status.toUpperCase()}
+        </Badge>
+      ),
+    },
+    {
+      header: 'Actions',
+      hideOnMobile: false,
+      cell: (c) =>
+        c.status === ('trash' as any) ? (
+          <Button variant="outline" size="sm" onClick={() => restoreCoupon(c)}>
+            <RefreshCcw className="h-4 w-4" />
+          </Button>
+        ) : (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => handleEdit(c)}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleDelete(c.id)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ),
+    },
+  ];
+
   if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
 
   return (
@@ -357,77 +401,26 @@ const CouponsPage: React.FC = () => {
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg">{error}</div>
       )}
-
-      <div className="rounded-lg border bg-white overflow-hidden dark:bg-gray-900">
-        <Table>
-          <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-            <TableRow>
-              <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Code</TableCell>
-              {/* <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Type</TableCell> */}
-              <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Amount</TableCell>
-              <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Min Order</TableCell>
-              <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Usage Limit</TableCell>
-              <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Products</TableCell>
-              <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Valid From</TableCell>
-              <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Expires</TableCell>
-              <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Status</TableCell>
-              <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Actions</TableCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-            {coupons.map((coupon) => (
-              <TableRow key={coupon.id}>
-                <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300 font-bold">{coupon.code}</TableCell>
-                {/* <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">{coupon.discount_type}</TableCell> */}
-                <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300 ">
-                  <Badge color={coupon.discount_type === "percentage" ? 'success' : 'error'} className='font-bold'>{
-                    coupon.discount_type === "percentage" ? coupon.discount_amount + "%" : "₹" + coupon.discount_amount
-                  }</Badge>
-
-                </TableCell>
-                <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">₹{coupon.min_order_amount || 0}</TableCell>
-                <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">{coupon.usage_limit || 'Unlimited'}</TableCell>
-                <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">{coupon.product_names?.join(", ") || 'All'}</TableCell>
-                <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">{date_formate(coupon.valid_from)}</TableCell>
-                <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">{date_formate(coupon.expires_at)}</TableCell>
-                <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                  <Badge variant="solid" color={coupon.status === 'active' ? 'success' : 'error'}>
-                    {coupon.status.toUpperCase()}
-                  </Badge>
-                </TableCell>
-                <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300 space-x-2">
-                  {/* Backend status may include 'trash' but UI type currently only has active/inactive */}
-                  {coupon.status === ('trash' as any) ? <>
-
-                    <Button variant="outline" size="sm" onClick={() => restoreCoupon(coupon)}>
-                      <RefreshCcw className="h-4 w-4" />
-                    </Button></> : <>
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(coupon)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDelete(coupon.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </>}
-                </TableCell>
-              </TableRow>
-            ))}
-            {coupons.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center">No coupons found.</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-        {totalPages > 1 && (
-          <div className="p-4 border-t bg-muted/50">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
+      <div className="overflow-hidden rounded-xl  ">
+        <div className="max-w-full overflow-x-auto">
+          <div className="rounded-lg  ">
+            <ResponsiveTable<Coupon>
+              columns={couponColumns}
+              data={coupons}
+              keyExtractor={(c) => c.id}
+              emptyText="No coupons found."
             />
+            {totalPages > 1 && (
+              <div className="p-4 border-t bg-muted/50">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {modalOpen && (

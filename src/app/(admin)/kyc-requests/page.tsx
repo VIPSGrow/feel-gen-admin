@@ -3,13 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import serverCallFuction from '@/lib/constantFunction';
 import { ApiResponse, KycDocument, KycRequest } from '@/types/kyc';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { ResponsiveTable, Column } from '@/components/tables/ResponsiveTable';
 import Badge from '@/components/ui/badge/Badge';
 import Avatar from '@/components/ui/avatar/Avatar';
 import Button from '@/components/ui/button/Button';
@@ -221,6 +215,57 @@ export default function KycRequestsPage() {
     }
   }, []);
 
+  const kycColumns: Column<KycRequest>[] = [
+    {
+      header: 'User',
+      cell: (r) => (
+        <div className="flex items-center gap-3">
+          <Avatar src={'/images/user/user-01.jpg'} alt={r.full_name} size="medium" />
+          <div className="font-medium">{r.full_name}</div>
+        </div>
+      ),
+    },
+    {
+      header: 'Email',
+      cell: (r) => (
+        <div>
+          <div className="font-sm">{r.email}</div>
+          <div className="text-sm text-gray-500">{r.phone}</div>
+        </div>
+      ),
+    },
+    {
+      header: 'Status',
+      cell: (r) => (
+        <Badge size="sm" color={getStatusColor(r.status)}>
+          {r.status === 'under_review' ? 'Under Review' : r.status.charAt(0).toUpperCase() + r.status.slice(1)}
+        </Badge>
+      ),
+    },
+    { header: 'Submitted', cell: (r) => (r.created_at ? formatDate(r.created_at) : '-') },
+    { header: 'Documents', cell: (r) => `Pending: ${r.pending_docs} | Approved: ${r.approved_docs}` },
+    {
+      header: 'Actions',
+      cell: (r) => (
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => openDocumentsModal(r)}>
+            <Eye className="w-4 h-4" />
+          </Button>
+          {r.status === 'under_review' ? (
+            <>
+              <Button variant="outline" size="sm" onClick={() => handleApproved(r, 'approved')} className="text-green-600 border-green-200 hover:bg-green-50">
+                <CheckCircle className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => handleApproved(r, 'rejected')} className="text-red-600 border-red-200 hover:bg-red-50">
+                <XCircle className="w-4 h-4" />
+              </Button>
+            </>
+          ) : null}
+        </div>
+      ),
+    },
+  ];
+
   const filteredRequests = requests;
 
   // Pagination UI helpers
@@ -270,104 +315,18 @@ export default function KycRequestsPage() {
 
       {error ? <Alert variant="error" title="Error" message={error} /> : null}
 
-      <div className="rounded-xl border bg-card overflow-hidden bg-white dark:bg-gray-900">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-              <TableRow>
-                <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">User</TableCell>
-                <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Email</TableCell>
-                <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Status</TableCell>
-                <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Submitted</TableCell>
-                <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Documents</TableCell>
-                <TableCell isHeader className="px-6 py-4 font-semibold text-gray-100 dark:text-white text-left">Actions</TableCell>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="px-6 py-6 text-gray-600 dark:text-gray-300">
-                    Loading...
-                  </TableCell>
-                </TableRow>
-              ) : filteredRequests.length > 0 ? (
-                filteredRequests.map((request) => (
-                  <TableRow key={request.id}>
-                    <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                      <div className="flex items-center gap-3">
-                        <Avatar src={'/images/user/user-01.jpg'} alt={request.full_name} size="medium" />
-                        <div>
-                          <div className="font-medium">{request.full_name}</div>
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                      <div>
-                        <div className="font-sm">{request.email}</div>
-                        <div className="text-sm text-gray-500">{request.phone}</div>
-                      </div>
-                    </TableCell>
-
-                    <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                      <Badge size="sm" color={getStatusColor(request.status)}>
-                        {request.status === 'under_review'
-                          ? 'Under Review'
-                          : request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                      </Badge>
-                    </TableCell>
-
-                    <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                      {request.created_at ? formatDate(request.created_at) : '-'}
-                    </TableCell>
-
-                    <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                      Pending: {request.pending_docs} | Approved: {request.approved_docs}
-                    </TableCell>
-
-                    <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => openDocumentsModal(request)}>
-                          <Eye className="w-4 h-4" />
-                        </Button>
-
-                        {request.status === 'under_review' ? (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleApproved(request, 'approved')}
-                              className="text-green-600 border-green-200 hover:bg-green-50"
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleApproved(request, 'rejected')}
-                              className="text-red-600 border-red-200 hover:bg-red-50"
-                            >
-                              <XCircle className="w-4 h-4" />
-                            </Button>
-                          </>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-muted-foreground dark:text-gray-500">
-                    {searchTerm || statusFilter !== 'all'
-                      ? 'No matching KYC requests found.'
-                      : 'No KYC requests yet.'}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+      <div className="rounded-xl  bg-card overflow-hidden ">
+        {loading ? (
+          <div className="px-6 py-6 text-gray-600 dark:text-gray-300">Loading...</div>
+        ) : (
+          <ResponsiveTable
+            columns={kycColumns}
+            data={filteredRequests}
+            keyExtractor={(r) => r.id}
+            emptyText={searchTerm || statusFilter !== 'all' ? 'No matching KYC requests found.' : 'No KYC requests yet.'}
+          />
+        )}
+      </div>
 
         {/* Pagination */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 py-4 border-t border-gray-100 dark:border-white/[0.05]">
@@ -425,7 +384,6 @@ export default function KycRequestsPage() {
                 ))}
               </select>
             </div>
-          </div>
         </div>
       </div>
 

@@ -155,7 +155,7 @@ export const rolePermissions: Record<string, string[]> = {
     'withdrawals',
     'network-tree',
     'members',
-    'e-users',
+    // 'e-users',
     // 'products',
     // 'product-list',
     // 'inventory',
