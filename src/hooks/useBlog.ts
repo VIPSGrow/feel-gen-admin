@@ -11,17 +11,19 @@ import type {
   BlogCommentsResponse
 } from '@/types/blog';
 
+export type BlogStatusFilter = 'all' | 'draft';
+
 export const useBlog = () => {
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [blog, setBlog] = useState<Blog | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchBlogs = useCallback(async () => {
+  const fetchBlogs = useCallback(async (status: BlogStatusFilter = 'all') => {
     setLoading(true);
     setError(null);
     try {
-      const response = await serverCallFuction<BlogsResponse>('GET', 'api/blog/');
+      const response = await serverCallFuction<BlogsResponse>('GET', `api/blog/?status=${status}`);
       if (response.success && response.data) {
         setBlogs(response.data);
       } else {
@@ -62,11 +64,12 @@ const createBlog = useCallback(async (payload: CreateBlogPayload, file?: File) =
       if (file) {
         const formDataToSend = new FormData();
         formDataToSend.append('title', payload.title);
+        if (payload.slug !== undefined) formDataToSend.append('slug', payload.slug);
         formDataToSend.append('content', payload.content);
         formDataToSend.append('category_id', payload.category_id.toString());
         formDataToSend.append('featured_image', file);
         if (payload.excerpt) formDataToSend.append('excerpt', payload.excerpt);
-        if (payload.is_published !== undefined) formDataToSend.append('is_published', payload.is_published.toString());
+        if (payload.status) formDataToSend.append('status', payload.status);
         
         response = await serverCallFuction<BlogResponse>('POST', 'api/blog/', formDataToSend);
       } else {
@@ -98,11 +101,12 @@ const createBlog = useCallback(async (payload: CreateBlogPayload, file?: File) =
       if (file) {
         const formDataToSend = new FormData();
         if (payload.title) formDataToSend.append('title', payload.title);
+        if (payload.slug !== undefined) formDataToSend.append('slug', payload.slug);
         if (payload.content) formDataToSend.append('content', payload.content);
         if (payload.category_id) formDataToSend.append('category_id', payload.category_id.toString());
         formDataToSend.append('featured_image', file);
         if (payload.excerpt) formDataToSend.append('excerpt', payload.excerpt);
-        if (payload.is_published !== undefined) formDataToSend.append('is_published', payload.is_published.toString());
+        if (payload.status) formDataToSend.append('status', payload.status);
         
         response = await serverCallFuction<BlogResponse>('PUT', `api/blog/${id}`, formDataToSend);
       } else {
@@ -165,7 +169,7 @@ const createBlog = useCallback(async (payload: CreateBlogPayload, file?: File) =
   }, []);
 
   useEffect(() => {
-    fetchBlogs();
+    fetchBlogs('all');
   }, [fetchBlogs]);
 
   return {

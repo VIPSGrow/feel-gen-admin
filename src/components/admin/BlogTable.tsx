@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useBlog } from '@/hooks/useBlog';
+import { useBlog, type BlogStatusFilter } from '@/hooks/useBlog';
 import type { Blog, BlogComment } from '@/types/blog';
 import {
     Table,
@@ -19,8 +19,9 @@ import { date_formate } from '@/lib/constantFunction';
 
 const BlogTable = () => {
     const router = useRouter();
-    const { blogs, loading, error, deleteBlog, approveComment } = useBlog();
+    const { blogs, loading, error, fetchBlogs, deleteBlog, approveComment } = useBlog();
 
+    const [status, setStatus] = useState<BlogStatusFilter>('all');
     const [viewingComments, setViewingComments] = useState(false);
     const [selectedBlogComments, setSelectedBlogComments] = useState<BlogComment[]>([]);
     const [selectedBlogId, setSelectedBlogId] = useState<number | string | null>(null);
@@ -73,9 +74,25 @@ const BlogTable = () => {
                             Manage your blog posts
                         </p>
                     </div>
-                    <Button onClick={openCreatePage} startIcon={<PlusIcon />}>
-                        Create Post
-                    </Button>
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                        <select
+                            aria-label="Filter blog posts by status"
+                            value={status}
+                            onChange={(event) => {
+                                const nextStatus: BlogStatusFilter =
+                                    event.target.value === 'draft' ? 'draft' : 'all';
+                                setStatus(nextStatus);
+                                fetchBlogs(nextStatus);
+                            }}
+                            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                        >
+                            <option value="all">All posts</option>
+                            <option value="draft">Drafts only</option>
+                        </select>
+                        <Button onClick={openCreatePage} startIcon={<PlusIcon />}>
+                            Create Post
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="rounded-xl border bg-card overflow-hidden bg-white dark:bg-gray-900">
@@ -98,7 +115,7 @@ const BlogTable = () => {
                                             <Badge>{blogItem?.category_name || 'N/A'}</Badge>
                                         </TableCell>
                                         <TableCell className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                                            {blogItem.is_published ? (
+                                            {blogItem.status === 'published' ? (
                                                 <Badge color="success">Published</Badge>
                                             ) : (
                                                 <Badge color="warning">Draft</Badge>

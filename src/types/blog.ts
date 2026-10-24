@@ -1,5 +1,7 @@
 import type { ServerResponse } from '@/lib/constantFunction';
 
+export type BlogStatus = 'draft' | 'published';
+
 export interface Blog {
   id: number | string;
   title: string;
@@ -10,7 +12,7 @@ export interface Blog {
   excerpt?: string;
   author_id?: number;
   author_name?: string;
-  is_published?: boolean;
+  status?: BlogStatus;
   view_count?: number;
   created_at?: string;
   updated_at?: string;
@@ -26,20 +28,22 @@ export interface BlogCategory {
 
 export interface CreateBlogPayload {
   title: string;
+  slug?: string;
   content: string;
   category_id: number;
   featured_image: string;
   excerpt?: string;
-  is_published?: boolean;
+  status?: BlogStatus;
 }
 
 export interface UpdateBlogPayload {
   title?: string;
+  slug?: string;
   content?: string;
   category_id?: number;
   featured_image?: string;
   excerpt?: string;
-  is_published?: boolean;
+  status?: BlogStatus;
 }
 
 export interface BlogComment {

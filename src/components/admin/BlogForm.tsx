@@ -5,10 +5,10 @@ import { useBlog } from '@/hooks/useBlog';
 import { useBlogCategory } from '@/hooks/useBlogCategory';
 import type { Blog, CreateBlogPayload, UpdateBlogPayload } from '@/types/blog';
 import Button from '@/components/ui/button/Button';
-import Input from '@/components/form/input/InputField';
 import Label from '@/components/form/Label';
 import { Image as ImageIcon } from 'lucide-react';
 import DropZone from '@/components/form/DropZone';
+import RichTextEditor from '@/components/form/editor/RichTextEditor';
 import { useRouter } from 'next/navigation';
 
 interface BlogFormProps {
@@ -28,26 +28,24 @@ const BlogForm: React.FC<BlogFormProps> = ({ blog, isEdit = false }) => {
     // Initialize form data - directly for edit mode, empty for create mode
     const initialFormData: CreateBlogPayload = isEdit && blog ? {
         title: blog.title,
+        slug: blog.slug || '',
         content: blog.content,
         category_id: blog.category_id,
         featured_image: blog.featured_image || '',
         excerpt: blog.excerpt || '',
-        is_published: blog.is_published || false,
+        status: blog.status || 'draft',
     } : {
         title: '',
+        slug: '',
         content: '',
         category_id: 0,
         featured_image: '',
         excerpt: '',
-        is_published: false,
+        status: 'draft',
     };
 
     const [formData, setFormData] = useState<CreateBlogPayload>(initialFormData);
-
-    // State for featured image file
     const [featuredImageFile, setFeaturedImageFile] = useState<File | null>(null);
-
-    // Initialize preview - for edit mode use existing image
     const [featuredImagePreview, setFeaturedImagePreview] = useState<string>(
         isEdit && blog?.featured_image ? blog.featured_image : ''
     );
@@ -64,8 +62,15 @@ const BlogForm: React.FC<BlogFormProps> = ({ blog, isEdit = false }) => {
         }
     };
 
+    const hasContent = Boolean(
+        formData.content
+            .replace(/<[^>]*>/g, '')
+            .replace(/&nbsp;/g, ' ')
+            .trim()
+    );
+
     const handleSubmit = async () => {
-        if (!formData.title || !formData.content || !formData.category_id) return;
+        if (!formData.title || !hasContent || !formData.category_id) return;
 
         let result;
         if (isEdit && blog) {
@@ -87,9 +92,20 @@ const BlogForm: React.FC<BlogFormProps> = ({ blog, isEdit = false }) => {
                     <input
                         id="title"
                         type="text"
-                        defaultValue={formData.title}
+                        value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         placeholder="Enter blog title"
+                        className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden focus:ring-3 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
+                    />
+                </div>
+                <div className="md:col-span-2">
+                    <Label htmlFor="slug">Slug</Label>
+                    <input
+                        id="slug"
+                        type="text"
+                        value={formData.slug || ''}
+                        onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                        placeholder="Enter blog URL slug"
                         className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden focus:ring-3 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
                     />
                 </div>
@@ -98,7 +114,7 @@ const BlogForm: React.FC<BlogFormProps> = ({ blog, isEdit = false }) => {
                     <input
                         id="excerpt"
                         type="text"
-                        defaultValue={formData.excerpt || ''}
+                        value={formData.excerpt || ''}
                         onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
                         placeholder="Enter short excerpt"
                         className="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden focus:ring-3 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
@@ -145,27 +161,25 @@ const BlogForm: React.FC<BlogFormProps> = ({ blog, isEdit = false }) => {
                     )}
                 </div>
                 <div className="md:col-span-2">
-                    <Label htmlFor="content">Content *</Label>
-                    <textarea
-                        id="content"
+                    <Label>Content *</Label>
+                    <RichTextEditor
                         value={formData.content}
-                        onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                        placeholder="Enter blog content"
+                        onChange={(content) => setFormData({ ...formData, content })}
+                        placeholder="Write your blog content..."
                         rows={12}
-                        className="w-full p-2 border rounded-md bg-white dark:bg-gray-900 dark:border-gray-700"
-                        required
                     />
                 </div>
                 <div className="md:col-span-2">
-                    <label className="flex items-center gap-2">
-                        <input
-                            type="checkbox"
-                            checked={formData.is_published || false}
-                            onChange={(e) => setFormData({ ...formData, is_published: e.target.checked })}
-                            className="w-4 h-4"
-                        />
-                        <span className="text-sm font-medium">Publish immediately</span>
-                    </label>
+                    <Label htmlFor="status">Status</Label>
+                    <select
+                        id="status"
+                        value={formData.status || 'draft'}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value === 'published' ? 'published' : 'draft' })}
+                        className="w-full p-2 border rounded-md bg-white dark:bg-gray-900 dark:border-gray-700"
+                    >
+                        <option value="draft">Draft</option>
+                        <option value="published">Published</option>
+                    </select>
                 </div>
             </div>
             <div className="flex gap-3 justify-end">
@@ -178,7 +192,7 @@ const BlogForm: React.FC<BlogFormProps> = ({ blog, isEdit = false }) => {
                 </Button>
                 <Button
                     onClick={handleSubmit}
-                    disabled={!formData.title || !formData.content || !formData.category_id || loading}
+                    disabled={!formData.title || !hasContent || !formData.category_id || loading}
                 >
                     {loading ? 'Saving...' : isEdit ? 'Update' : 'Create'}
                 </Button>
