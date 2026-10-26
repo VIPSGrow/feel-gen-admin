@@ -31,6 +31,13 @@ interface AppliedCoupon {
   code: string;
 }
 
+interface CouponOffer {
+  id?: number | string;
+  code: string;
+  display_title?: string;
+  display_description?: string;
+}
+
 
 declare global {
   interface Window {
@@ -56,6 +63,9 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
   const [couponDiscount, setCouponDiscount] = useState<number>(0);
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [couponError, setCouponError] = useState('');
+  const [availableCoupons, setAvailableCoupons] = useState<CouponOffer[]>([]);
+  const [showAvailableCoupons, setShowAvailableCoupons] = useState(false);
+  const [couponsError, setCouponsError] = useState('');
 
   const [formData, setFormData] = useState({
     full_name: (user as any).full_name || (user as any).username || '',
@@ -288,11 +298,11 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
       const res = await serverCallFuction('POST', 'api/coupons/validate', {
         code: couponCode.trim().toUpperCase(),
         total_amount: totalAmount,
-        user_id: (user as any).id || (user as any).user_id,
-        cart_items: cartItems.map((item) => ({
-          product_id: item.product_id,
-          quantity: item.quantity,
-        })),
+        user_id: user.id || user.user_id,
+        username: user.username,
+        phone: selectedAddress?.phone || user.phone,
+        user_agent: typeof window !== 'undefined' ? window.navigator.userAgent : undefined,
+        products: cartItems.map((item) => item.product_id).filter(Boolean),
       });
 
       if (res.status !== true && res.success !== true) {
@@ -325,9 +335,10 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
       setCouponCode(coupon.code);
       setAppliedCoupon(coupon);
       setCouponDiscount(appliedDiscount);
-      alert(`Coupon applied! Discount: ${currency}${formattedAmountCommas(appliedDiscount)}`);
     } catch (error) {
-      setCouponError('Failed to validate coupon. Please try again.');
+      setCouponError(
+        error instanceof Error ? error.message : 'Failed to validate coupon. Please try again.',
+      );
       setAppliedCoupon(null);
       setCouponDiscount(0);
     } finally {
@@ -366,6 +377,30 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
     fetchAddresses();
     fetchStates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const fetchAvailableCoupons = async () => {
+      try {
+        const res = await serverCallFuction('GET', 'api/coupons/public');
+        if (res.status !== true && res.success !== true) {
+          throw new Error(res.message || 'Unable to load available offers');
+        }
+
+        const offers = Array.isArray(res.data)
+          ? res.data.filter(
+              (offer: CouponOffer) => typeof offer?.code === 'string' && offer.code.length > 0,
+            )
+          : [];
+        setAvailableCoupons(offers);
+        setCouponsError('');
+      } catch (error) {
+        console.error('Failed to fetch available coupons:', error);
+        setCouponsError('Unable to load available offers. Please try again later.');
+      }
+    };
+
+    fetchAvailableCoupons();
   }, []);
 
   useEffect(() => {
@@ -873,6 +908,69 @@ const CheckoutForm: React.FC<CartCheckoutProps> = ({ cartItems, totalAmount, use
                       <X size={16} />
                     </button>
                   </div>
+                )}
+
+                {availableCoupons.length > 0 && !appliedCoupon && (
+                  <div className="mt-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                        Available offers
+                      </span>
+                      <button
+                        type="button"
+                        aria-expanded={showAvailableCoupons}
+                        aria-controls="available-coupons-list"
+                        onClick={() => setShowAvailableCoupons((show) => !show)}
+                        className="text-sm font-medium text-brand-600 hover:text-brand-700"
+                      >
+                        {showAvailableCoupons ? 'Hide' : 'View'}
+                      </button>
+                    </div>
+                    {showAvailableCoupons && (
+                      <div
+                        id="available-coupons-list"
+                        className="max-h-56 space-y-2 overflow-y-auto"
+                      >
+                        {availableCoupons.map((coupon) => (
+                          <div
+                            key={coupon.id ?? coupon.code}
+                            className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800"
+                          >
+                            <div className="min-w-0 text-sm">
+                              <p className="font-semibold text-gray-800 dark:text-gray-100">
+                                {coupon.display_title || coupon.code}
+                              </p>
+                              {coupon.display_description && (
+                                <p className="text-gray-500 dark:text-gray-400">
+                                  {coupon.display_description}
+                                </p>
+                              )}
+                              <Badge size="sm" variant="light" color="primary">
+                                {coupon.code}
+                              </Badge>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                setCouponCode(coupon.code.toUpperCase());
+                                setCouponError('');
+                              }}
+                              disabled={applyingCoupon}
+                            >
+                              Use
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {couponsError && (
+                  <p className="mt-2 text-xs text-amber-600" role="status">
+                    {couponsError}
+                  </p>
                 )}
 
                 {couponError && (
