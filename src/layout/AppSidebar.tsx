@@ -26,9 +26,10 @@ import {
   UserCircleIcon,
 } from "../icons/index";
 import SidebarWidget from "./SidebarWidget";
-import { GitPullRequestIcon, IdCardIcon, ShieldCheck, Users } from "lucide-react";
+import { GitPullRequestIcon, IdCardIcon, ImageIcon, ShieldCheck, Users } from "lucide-react";
 
 type NavItem = {
+  superAdminOnly?: boolean;
   name: string;
   icon: React.ReactNode;
   path?: string;
@@ -298,6 +299,16 @@ const allNavItems: NavItem[] = [
     ]
   },
   {
+    icon: <ImageIcon />,
+    name: "Media",
+    superAdminOnly: true,
+    permission: "media",
+    subItems: [
+      { name: "All Media", path: "/media" },
+      { name: "Add Media", path: "/media/add" },
+    ],
+  },
+  {
     icon: <AlertIcon />,
     name: "Notifications",
     permission: "notifications",
@@ -325,7 +336,8 @@ const allNavItems: NavItem[] = [
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
-  const { user, hasPermission } = useAuth();
+  const { user, hasPermission, role } = useAuth();
+  const isSuperAdmin = (role || "").toLowerCase().replace(/[\s_-]/g, "") === "superadmin";
   const pathname = usePathname();
 
   const [newOrderCount, setNewOrderCount] = useState<number>(0);
@@ -338,6 +350,7 @@ const AppSidebar: React.FC = () => {
   // Memoize filtered components to stabilize identity structure across cycles
   const navItems = useMemo(() => {
     return allNavItems
+      .filter((item) => !item.superAdminOnly || isSuperAdmin)
       .filter((item) => !item.permission || hasPermission(item.permission))
       .map((item) => {
         if (item.subItems) {
@@ -356,7 +369,7 @@ const AppSidebar: React.FC = () => {
         }
         return true;
       });
-  }, [hasPermission]);
+  }, [hasPermission, isSuperAdmin]);
 
   useEffect(() => {
     const fetchNewOrders = async () => {
