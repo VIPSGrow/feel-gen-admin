@@ -30,6 +30,7 @@ const TreeConnector = () => {
 
     const [treeData, setTreeData] = React.useState<TreeUser[]>([]);
     const [loading, setLoading] = React.useState(true);
+    const [treeResetKey, setTreeResetKey] = React.useState(0);
 
 
     // 1. Get the search params from the URL
@@ -58,6 +59,8 @@ const TreeConnector = () => {
             if (res.status) {
                 setTreeData(res.data);
                 if (toastId) {
+                    setSelectedNode(null);
+                    setTreeResetKey((key) => key + 1);
                     update(toastId, 'success', 'Tree refreshed successfully');
                 }
             } else {
@@ -133,7 +136,7 @@ const TreeConnector = () => {
                 </div>
 
 
-                <GenealogyTree data={treeData} onSelect={handleNodeSelect} distributorLevel={distributorLevel} />
+                <GenealogyTree key={treeResetKey} data={treeData} onSelect={handleNodeSelect} distributorLevel={distributorLevel} />
                 <div className="flex flex-wrap gap-4 mt-4 justify-center">
                     <div className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded bg-emerald-500 border-2 border-emerald-300"></div>

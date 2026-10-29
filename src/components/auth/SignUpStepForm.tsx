@@ -9,6 +9,7 @@ import serverCallFuction from '@/lib/constantFunction';
 import { States } from '@/types/static-content';
 import { useSetting } from '@/context/SettingContext';
 import Link from 'next/link';
+import flatpickr from 'flatpickr';
 
 interface GstCheckResponse {
     status: boolean;
@@ -23,6 +24,8 @@ export default function SignUpStepForm() {
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const dobInputRef = useRef<HTMLInputElement>(null);
+    const dobPickerRef = useRef<flatpickr.Instance | null>(null);
     const router = useRouter();
     const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
@@ -294,8 +297,8 @@ export default function SignUpStepForm() {
 
                 if (isNaN(selectedDate.getTime())) {
                     newErrors.dob = "Please enter a valid Date of Birth";
-                } else if (age < 21) {
-                    newErrors.dob = "You must be at least 21 years old to register";
+                } else if (age < 18) {
+                    newErrors.dob = "You must be at least 18 years old to register";
                 } else if (selectedDate.getFullYear() < 1900) {
                     newErrors.dob = "Please enter a realistic year";
                 }
@@ -481,7 +484,7 @@ export default function SignUpStepForm() {
 
     const getMaxDOB = () => {
         const today = new Date();
-        const year = today.getFullYear() - 21; // Aaj ke saal se 21 saal minus kiya
+        const year = today.getFullYear() - 18; // Aaj ke saal se 18 saal minus kiya
         const month = String(today.getMonth() + 1).padStart(2, '0'); // Months 0-11 hote hain, isliye +1
         const day = String(today.getDate()).padStart(2, '0');
 
@@ -492,6 +495,49 @@ export default function SignUpStepForm() {
     const { settings, getSettingByKey } = useSetting()
 
     const contact_data = getSettingByKey("contact_us")
+
+    useEffect(() => {
+        if (step !== 2) return;
+
+        const input = dobInputRef.current;
+        if (!input) return;
+
+        const maxDOBDate = new Date(`${maxDate}T00:00:00`);
+        dobPickerRef.current = flatpickr(input, {
+            dateFormat: 'd-m-Y',
+            minDate: new Date(1900, 0, 1),
+            maxDate: maxDOBDate,
+            static: true,
+            disableMobile: true,
+            onOpen: (_dates, _dateString, instance) => {
+                if (!instance.selectedDates.length || instance.selectedDates[0] > maxDOBDate) {
+                    instance.jumpToDate(maxDOBDate);
+                }
+            },
+            onChange: ([selectedDate]) => {
+                setFormData(prev => ({
+                    ...prev,
+                    dob: selectedDate ? flatpickr.formatDate(selectedDate, 'Y-m-d') : '',
+                }));
+            },
+        });
+
+        return () => {
+            dobPickerRef.current?.destroy();
+            dobPickerRef.current = null;
+        };
+    }, [maxDate, step]);
+
+    useEffect(() => {
+        const picker = dobPickerRef.current;
+        if (!picker) return;
+
+        if (formData.dob) {
+            picker.setDate(formData.dob, false, 'Y-m-d');
+        } else {
+            picker.clear();
+        }
+    }, [formData.dob, step]);
 
     return (
         <div className="max-w-3xl md:min-w-3xl mx-auto p-6 bg-white dark:bg-gray-900 rounded-xl shadow-md">
@@ -629,15 +675,22 @@ export default function SignUpStepForm() {
                             </div>
                             <div>
                                 <Label>Date of Birth* </Label>
-                                <Input
-                                    type="date"
-                                    defaultValue={formData.dob}
-                                    max={maxDate}
-                                    onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                                    error={!!fieldErrors.dob}
-                                    hint={fieldErrors.dob}
+                                <input
+                                    ref={dobInputRef}
+                                    id="signup-dob"
+                                    type="text"
+                                    placeholder="Select date"
+                                    readOnly
+                                    className={`h-11 w-full cursor-pointer rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden focus:ring-3 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800 ${
+                                        fieldErrors.dob
+                                            ? 'border-error-500 text-error-800 focus:border-error-500 focus:ring-error-500/10 dark:text-error-400'
+                                            : 'bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90'
+                                    }`}
                                 />
-                                <p className="text-[10px] text-gray-400 mt-1">Minimum 21 years required </p>
+                                {fieldErrors.dob && (
+                                    <p className="mt-1.5 text-xs text-error-500">{fieldErrors.dob}</p>
+                                )}
+                                <p className="text-[10px] text-gray-400 mt-1">Minimum 18 years required </p>
                             </div>
                             <div>
                                 <Label>Gender*</Label>
@@ -849,7 +902,7 @@ export default function SignUpStepForm() {
                                     handleFieldChange('accountNo', val);
                                 }
                             }}
-
+                            type="password"
                             inputMode='numeric'
                             error={!!fieldErrors.accountNo}
                             hint={fieldErrors.accountNo}

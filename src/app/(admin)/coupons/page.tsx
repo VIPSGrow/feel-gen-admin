@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useModal } from '@/hooks/useModal';
 import serverCallFuction, { date_formate } from '@/lib/constantFunction';
 import { ResponsiveTable, Column } from '@/components/tables/ResponsiveTable';
@@ -27,7 +27,7 @@ interface Coupon {
   applicable_products?: string[];
   product_names?: string[];
   applicable_users?: string[];
-  status: 'active' | 'inactive';
+  status: 'active' | 'inactive' | 'trash';
   show_on_website?: boolean;
   display_title?: string;
   display_description?: string;
@@ -68,6 +68,7 @@ const CouponsPage: React.FC = () => {
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [couponFilter, setCouponFilter] = useState<'active' | 'trash'>('active');
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
@@ -120,14 +121,22 @@ const CouponsPage: React.FC = () => {
     setEditingCoupon(null);
   };
 
-  const fetchCoupons = async (page = 1) => {
+  const fetchCoupons = useCallback(async (page = 1, status: 'active' | 'trash' = couponFilter) => {
     setLoading(true);
     setError('');
     try {
-      const response = await serverCallFuction('GET', `api/coupons?page=${page}&limit=10`);
+      const response = await serverCallFuction('GET', `api/coupons?page=${page}&limit=10&status=${status}`);
       if (response && response.status !== false) {
         setCoupons(response.data || []);
-        setTotalPages(response.totalPages || 1);
+        const pagination = response.pagination as
+          | { pages?: number; totalPages?: number; total?: number }
+          | undefined;
+        const pages =
+          pagination?.pages ??
+          pagination?.totalPages ??
+          response.totalPages ??
+          (pagination?.total ? Math.ceil(pagination.total / 10) : 1);
+        setTotalPages(Math.max(1, pages));
       } else {
         setError(response?.message || 'Failed to fetch coupons');
       }
@@ -136,11 +145,11 @@ const CouponsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [couponFilter]);
 
   useEffect(() => {
-    fetchCoupons(currentPage);
-  }, [currentPage]);
+    fetchCoupons(currentPage, couponFilter);
+  }, [currentPage, couponFilter, fetchCoupons]);
 
   const handleCreateOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,6 +202,7 @@ const CouponsPage: React.FC = () => {
 
     setFormData({
       ...coupon,
+      status: coupon.status === 'inactive' ? 'inactive' : 'active',
       valid_from: toDateInput(coupon.valid_from),
       expires_at: toDateInput(coupon.expires_at),
       min_order_amount: coupon.min_order_amount || 0,
@@ -366,7 +376,7 @@ const CouponsPage: React.FC = () => {
       header: 'Actions',
       hideOnMobile: false,
       cell: (c) =>
-        c.status === ('trash' as any) ? (
+        c.status === 'trash' ? (
           <Button variant="outline" size="sm" onClick={() => restoreCoupon(c)}>
             <RefreshCcw className="h-4 w-4" />
           </Button>
@@ -392,10 +402,24 @@ const CouponsPage: React.FC = () => {
           <h2 className="text-2xl font-bold text-theme dark:text-gray-300">Coupons</h2>
           <p className="text-muted-foreground dark:text-gray-400">Manage your coupons</p>
         </div>
-        <Button onClick={openCreateModal}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Coupon
-        </Button>
+        <div className="flex items-center gap-3">
+          <select
+            aria-label="Filter coupons by status"
+            value={couponFilter}
+            onChange={(e) => {
+              setCurrentPage(1);
+              setCouponFilter(e.target.value as 'active' | 'trash');
+            }}
+            className="text-center py-3 px-5 border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white bg-white appearance-none "
+          >
+            <option value="active">Active</option>
+            <option value="trash">Trash</option>
+          </select>
+          <Button onClick={openCreateModal}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Coupon
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -681,4 +705,3 @@ const CouponsPage: React.FC = () => {
 };
 
 export default CouponsPage;
-

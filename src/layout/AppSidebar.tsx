@@ -334,6 +334,86 @@ const allNavItems: NavItem[] = [
   },
 ];
 
+type SidebarRequestResponse = {
+  success?: boolean;
+  status?: boolean;
+  data?: Array<{ id?: number | string; user_id?: number | string }>;
+  users?: Array<{ id?: number | string; user_id?: number | string }>;
+  message?: string;
+};
+
+const fetchUnseenCount = async (
+  endpoint: string,
+  storageKey: string,
+  isViewed: boolean
+): Promise<number> => {
+  const response = await serverCallFuction("GET", endpoint) as SidebarRequestResponse;
+
+  const records = Array.isArray(response?.data)
+    ? response.data
+    : Array.isArray(response?.users)
+      ? response.users
+      : null;
+
+  if (response?.success === false || response?.status === false || !records) {
+    throw new Error(response?.message ?? `Invalid response from ${endpoint}`);
+  }
+
+  const currentIds = records
+    .map((item) => item?.id ?? item?.user_id)
+    .filter((id): id is number | string => id !== undefined && id !== null)
+    .map(String);
+
+  let knownIds: string[] = [];
+  let unseenIds: string[] = [];
+  let hasStoredBaseline = false;
+
+  try {
+    const storedTracker = window.localStorage.getItem(storageKey);
+    if (storedTracker !== null) {
+      const parsedTracker: unknown = JSON.parse(storedTracker);
+      if (
+        typeof parsedTracker === "object" &&
+        parsedTracker !== null &&
+        "knownIds" in parsedTracker &&
+        Array.isArray(parsedTracker.knownIds) &&
+        "unseenIds" in parsedTracker &&
+        Array.isArray(parsedTracker.unseenIds)
+      ) {
+        knownIds = parsedTracker.knownIds.filter((id): id is string => typeof id === "string");
+        unseenIds = parsedTracker.unseenIds.filter((id): id is string => typeof id === "string");
+        hasStoredBaseline = true;
+      }
+    }
+  } catch (error) {
+    console.error(`Failed to read sidebar tracker ${storageKey}:`, error);
+  }
+
+  if (!hasStoredBaseline) {
+    knownIds = currentIds;
+  } else {
+    const knownSet = new Set(knownIds);
+    const unseenSet = new Set(unseenIds);
+    currentIds.forEach((id) => {
+      if (!knownSet.has(id)) unseenSet.add(id);
+    });
+    unseenIds = Array.from(unseenSet);
+    knownIds = Array.from(new Set([...knownIds, ...currentIds]));
+  }
+
+  if (isViewed) {
+    unseenIds = [];
+  }
+
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify({ knownIds, unseenIds }));
+  } catch (error) {
+    console.error(`Failed to save sidebar tracker ${storageKey}:`, error);
+  }
+
+  return unseenIds.length;
+};
+
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const { user, hasPermission, role } = useAuth();
@@ -341,6 +421,7 @@ const AppSidebar: React.FC = () => {
   const pathname = usePathname();
 
   const [newOrderCount, setNewOrderCount] = useState<number>(0);
+  const [unseenRequestCounts, setUnseenRequestCounts] = useState<Record<string, number>>({});
   const [openSubmenu, setOpenSubmenu] = useState<{ type: "main" | "others"; index: number; } | null>(null);
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -387,6 +468,77 @@ const AppSidebar: React.FC = () => {
 
     fetchNewOrders();
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    const trackers = [
+      {
+        permission: "members",
+        endpoint: "api/users/downline",
+        storageKey: `new-member-tracker:${user.id}`,
+        path: "/members",
+      },
+      {
+        permission: "kyc-requests",
+        endpoint: "api/users/admin/kyc-requests?page=1&limit=10",
+        storageKey: `new-kyc-request-tracker:${user.id}`,
+        path: "/kyc-requests",
+      },
+      {
+        permission: "withdrawal-requests",
+        endpoint: "api/transactions/withdraw-requests?page=1&limit=10",
+        storageKey: `new-withdrawal-request-tracker:${user.id}`,
+        path: "/withdrawal-requests",
+      },
+    ].filter((tracker) => hasPermission(tracker.permission));
+    let isMounted = true;
+
+    const fetchUnseenRequests = async () => {
+      const counts = await Promise.all(trackers.map(async (tracker) => {
+        try {
+          const count = await fetchUnseenCount(
+            tracker.endpoint,
+            tracker.storageKey,
+            pathname === tracker.path
+          );
+          return [tracker.permission, count] as const;
+        } catch (error) {
+          console.error(`Failed to fetch ${tracker.permission} for sidebar badge:`, error);
+          return null;
+        }
+      }));
+
+      if (isMounted) {
+        setUnseenRequestCounts((previous) => {
+          const updated = { ...previous };
+          counts.forEach((result) => {
+            if (result) updated[result[0]] = result[1];
+          });
+          return updated;
+        });
+      }
+    };
+
+    fetchUnseenRequests();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        fetchUnseenRequests();
+      }
+    };
+    const intervalId = window.setInterval(fetchUnseenRequests, 15_000);
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [hasPermission, pathname, user?.id]);
 
   useEffect(() => {
     let matched: { type: "main" | "others"; index: number } | null = null;
@@ -523,6 +675,9 @@ const AppSidebar: React.FC = () => {
                 <span className="flex items-center gap-2">
                   {(isExpanded || isHovered || isMobileOpen) && (
                     <span className="menu-item-text">{nav.name}</span>
+                  )}
+                  {user?.id && nav.permission && (unseenRequestCounts[nav.permission] ?? 0) > 0 && (isExpanded || isHovered || isMobileOpen) && (
+                    <Badge color="success" className="menu-dropdown-badge-active ml-auto">{unseenRequestCounts[nav.permission]} New</Badge>
                   )}
                   {nav.permission === 'orders' && newOrderCount > 0 && (isExpanded || isHovered || isMobileOpen) && (
                     <Badge color="success" className="menu-dropdown-badge-active ml-auto">{newOrderCount} New</Badge>
